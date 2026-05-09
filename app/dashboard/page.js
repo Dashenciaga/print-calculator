@@ -183,12 +183,12 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Өргөн (мм)</label>
-                  <input type="number" value={pW} onChange={e => setPW(e.target.value === '' ? '' : +e.target.value)}
+                  <input type="text" inputMode="numeric" value={pW} onChange={e => setPW(e.target.value === '' ? '' : +e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Өндөр (мм)</label>
-                  <input type="number" value={pH} onChange={e => setPH(+e.target.value)}
+                  <input type="text" inputMode="numeric" value={pH} onChange={e => setPH(+e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" onFocus={e => e.target.select()} />
                 </div>
               </div>
@@ -202,7 +202,7 @@ export default function Dashboard() {
                   ['Зайлуулах зай (мм)', gap, setGap], ['Ирмэгийн зай (мм)', margin, setMargin]].map(([label, val, setter]) => (
                   <div key={label}>
                     <label className="text-xs text-gray-400 mb-1 block">{label}</label>
-                    <input type="number" value={val} onChange={e => setter(+e.target.value)}
+                    <input type="text" inputMode="numeric" value={val} onChange={e => setter(+e.target.value)}
                       className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
                   </div>
                 ))}
@@ -218,7 +218,7 @@ export default function Dashboard() {
                   ['НӨАТ (%)', vat, setVat]].map(([label, val, setter]) => (
                   <div key={label}>
                     <label className="text-xs text-gray-400 mb-1 block">{label}</label>
-                    <input type="number" value={val} onChange={e => setter(+e.target.value)}
+                    <input type="text" inputMode="numeric" value={val} onChange={e => setter(+e.target.value)}
                       className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
                   </div>
                 ))}
