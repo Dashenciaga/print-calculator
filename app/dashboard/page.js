@@ -183,13 +183,13 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Өргөн (мм)</label>
-                  <input type="number" value={pW} onChange={e => setPW(+e.target.value)}
+                  <input type="number" value={pW} onChange={e => setPW(e.target.value === '' ? '' : +e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Өндөр (мм)</label>
                   <input type="number" value={pH} onChange={e => setPH(+e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" onFocus={e => e.target.select()} />
                 </div>
               </div>
             </div>
