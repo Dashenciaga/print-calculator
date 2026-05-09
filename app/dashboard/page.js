@@ -95,6 +95,35 @@ export default function Dashboard() {
     }
   }
 
+  function PaperVis({ cols, rows, pW, pH, mW, mH, gap, margin }) {
+  const maxW = 300, maxH = 200
+  const scaleX = maxW / pW, scaleY = maxH / pH
+  const scale = Math.min(scaleX, scaleY, 1)
+  const vw = Math.round(pW * scale), vh = Math.round(pH * scale)
+  const smrg = Math.round(margin * scale)
+  const smW = Math.max(1, Math.round(mW * scale))
+  const smH = Math.max(1, Math.round(mH * scale))
+  const sgap = Math.round(gap * scale)
+  const items = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      items.push({ x: smrg + c * (smW + sgap), y: smrg + r * (smH + sgap), n: r * cols + c + 1 })
+    }
+  }
+  return (
+    <div className="flex flex-col items-center gap-2 bg-gray-800 rounded-xl p-4 mb-4">
+      <p className="text-xs text-gray-400">{pW}×{pH}мм цаасан дээр {cols}×{rows} = {cols*rows} ширхэг</p>
+      <div className="relative bg-gray-900 border border-violet-500/30 rounded" style={{width:vw, height:vh}}>
+        {items.map(({x,y,n}) => (
+          <div key={n} className="absolute border border-violet-500/50 bg-violet-500/10 flex items-center justify-center text-violet-400 font-bold"
+            style={{left:x, top:y, width:smW, height:smH, fontSize: Math.max(6, Math.min(10, smW/3))}}>
+            {smW > 12 && smH > 8 ? n : ''}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
   const fmt = n => Math.round(n).toLocaleString()
 
   if (!user) return (
@@ -206,6 +235,7 @@ export default function Dashboard() {
         {/* RESULT TAB */}
         {activeTab === 'result' && (
           <div className="space-y-4">
+            <PaperVis cols={cols} rows={rows} pW={pW} pH={pH} mW={mW} mH={mH} gap={gap} margin={margin} />
             {/* Metrics */}
             <div className="grid grid-cols-3 gap-3">
               {[
