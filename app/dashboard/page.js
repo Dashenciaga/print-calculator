@@ -8,8 +8,89 @@ const PAPER_SIZES = {
   Letter: [216, 279], Legal: [216, 356]
 }
 
+const S = {
+  shell: { display:'flex', minHeight:'100vh', background:'#f4f5f7', fontFamily:'system-ui,-apple-system,sans-serif' },
+  sidebar: { width:220, background:'#1a1f36', display:'flex', flexDirection:'column', flexShrink:0, position:'fixed', top:0, left:0, bottom:0, zIndex:10 },
+  sbLogo: { display:'flex', alignItems:'center', gap:10, padding:'20px 18px 24px' },
+  sbIcon: { width:30, height:30, background:'#4f46e5', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 },
+  sbName: { color:'white', fontSize:14, fontWeight:600, letterSpacing:'-.2px' },
+  sbSection: { fontSize:10, color:'#475569', fontWeight:600, letterSpacing:'.08em', textTransform:'uppercase', padding:'0 18px 8px' },
+  sbItem: { display:'flex', alignItems:'center', gap:9, padding:'9px 18px', fontSize:13, color:'#94a3b8', cursor:'pointer', border:'none', background:'none', width:'100%', textAlign:'left', transition:'color .15s' },
+  sbItemActive: { background:'#2d3555', color:'white' },
+  sbSpacer: { flex:1 },
+  sbUser: { display:'flex', alignItems:'center', gap:9, padding:'14px 18px', borderTop:'0.5px solid #2d3555' },
+  sbAvatar: { width:30, height:30, borderRadius:'50%', background:'#4f46e5', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:600, flexShrink:0 },
+  sbUname: { color:'#cbd5e1', fontSize:12, fontWeight:500 },
+  sbEmail: { color:'#475569', fontSize:10 },
+  main: { flex:1, marginLeft:220, display:'flex', flexDirection:'column', minHeight:'100vh' },
+  topbar: { background:'white', borderBottom:'0.5px solid #e2e8f0', padding:'0 24px', height:52, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:5 },
+  tbTitle: { fontSize:15, fontWeight:600, color:'#1a1f36' },
+  tbRight: { display:'flex', alignItems:'center', gap:10 },
+  tabWrap: { display:'flex', gap:2, background:'#f1f5f9', borderRadius:7, padding:3 },
+  tab: { padding:'5px 16px', fontSize:12, borderRadius:5, color:'#64748b', cursor:'pointer', border:'none', background:'none', fontWeight:500, transition:'all .15s' },
+  tabActive: { background:'white', color:'#1a1f36', fontWeight:600, boxShadow:'0 1px 3px rgba(0,0,0,.08)' },
+  content: { padding:'20px 24px', flex:1 },
+  metricsGrid: { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 },
+  metricCard: { background:'white', borderRadius:10, border:'0.5px solid #e2e8f0', padding:'14px 16px' },
+  mcLabel: { fontSize:11, color:'#64748b', marginBottom:6, fontWeight:500 },
+  mcVal: { fontSize:24, fontWeight:700, color:'#1a1f36', letterSpacing:'-.5px' },
+  mcUnit: { fontSize:11, color:'#94a3b8', marginLeft:2 },
+  mcSub: { fontSize:11, color:'#10b981', marginTop:3 },
+  twoCol: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 },
+  card: { background:'white', borderRadius:10, border:'0.5px solid #e2e8f0', padding:'16px' },
+  cardTitle: { fontSize:13, fontWeight:600, color:'#1a1f36', marginBottom:14 },
+  paperVis: { background:'#f8f9fb', borderRadius:8, border:'0.5px solid #e2e8f0', padding:12, display:'flex', flexDirection:'column', alignItems:'center', gap:8, minHeight:160 },
+  visLabel: { fontSize:11, color:'#94a3b8' },
+  fieldRow: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 },
+  fieldLabel: { display:'block', fontSize:11, fontWeight:500, color:'#374151', marginBottom:4 },
+  fieldInput: { width:'100%', padding:'8px 10px', fontSize:13, border:'1.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', boxSizing:'border-box' },
+  orientWrap: { display:'flex', background:'#f1f5f9', borderRadius:8, overflow:'hidden', border:'1.5px solid #e2e8f0' },
+  orientBtn: { flex:1, padding:'8px', fontSize:12, fontWeight:500, border:'none', background:'none', color:'#64748b', cursor:'pointer' },
+  orientBtnActive: { background:'#4f46e5', color:'white' },
+  brRow: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'0.5px solid #f1f5f9', fontSize:13 },
+  brLabel: { color:'#64748b' },
+  brVal: { color:'#1a1f36', fontWeight:500 },
+  brTotal: { display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f5f3ff', borderRadius:8, padding:'10px 12px', marginTop:8 },
+  brTL: { fontSize:13, color:'#4f46e5', fontWeight:600 },
+  brTV: { fontSize:18, color:'#4f46e5', fontWeight:700 },
+  saveBtn: { width:'100%', padding:'10px', background:'#4f46e5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', marginTop:12 },
+  calcBtn: { width:'100%', padding:'11px', background:'#4f46e5', color:'white', border:'none', borderRadius:9, fontSize:14, fontWeight:600, cursor:'pointer', marginTop:8 },
+  histItem: { background:'white', border:'0.5px solid #e2e8f0', borderRadius:10, padding:'12px 14px', marginBottom:8 },
+  histTop: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 },
+  histName: { fontSize:13, fontWeight:600, color:'#1a1f36' },
+  histAmt: { fontSize:14, fontWeight:700, color:'#4f46e5' },
+  histTags: { display:'flex', gap:6, flexWrap:'wrap' },
+  tag: { fontSize:11, color:'#64748b', background:'#f1f5f9', padding:'2px 8px', borderRadius:20 },
+  empty: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'60px 20px', gap:12, color:'#94a3b8', textAlign:'center' },
+  sectionSelect: { width:'100%', padding:'8px 10px', fontSize:13, border:'1.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', boxSizing:'border-box' },
+}
+
+function PaperVis({ cols, rows, pW, pH, mW, mH, gap, margin }) {
+  const maxW = 180, maxH = 130
+  const scale = Math.min(maxW / pW, maxH / pH, 1)
+  const vw = Math.round(pW * scale), vh = Math.round(pH * scale)
+  const smrg = Math.round(margin * scale)
+  const smW = Math.max(1, Math.round(mW * scale))
+  const smH = Math.max(1, Math.round(mH * scale))
+  const sgap = Math.round(gap * scale)
+  const items = []
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      items.push({ x: smrg + c*(smW+sgap), y: smrg + r*(smH+sgap), n: r*cols+c+1 })
+  return (
+    <div style={{position:'relative', background:'white', border:'1px solid #c7d2fe', borderRadius:4, flexShrink:0, width:vw, height:vh}}>
+      {items.map(({x,y,n}) => (
+        <div key={n} style={{position:'absolute', left:x, top:y, width:smW, height:smH, background:'#eef2ff', border:'0.5px solid #a5b4fc', borderRadius:2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:Math.max(6,Math.min(9,smW/3)), color:'#4f46e5', fontWeight:600}}>
+          {smW > 10 && smH > 8 ? n : ''}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [orient, setOrient] = useState('portrait')
   const [paperSize, setPaperSize] = useState('A4')
   const [pW, setPW] = useState(210)
@@ -25,19 +106,20 @@ export default function Dashboard() {
   const [vat, setVat] = useState(10)
   const [history, setHistory] = useState([])
   const [activeTab, setActiveTab] = useState('calc')
+  const [saving, setSaving] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
-    async function getUser() {
+    async function init() {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) router.push('/login')
-      else {
-        setUser(user)
-        loadHistory(user.id)
-      }
+      if (!user) { router.push('/'); return }
+      setUser(user)
+      const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
+      setProfile(prof)
+      loadHistory(user.id)
     }
-    getUser()
+    init()
   }, [])
 
   useEffect(() => {
@@ -49,266 +131,226 @@ export default function Dashboard() {
   }, [paperSize, orient])
 
   async function loadHistory(uid) {
-    const { data } = await supabase
-      .from('calculations')
-      .select('*')
-      .eq('user_id', uid)
-      .order('created_at', { ascending: false })
-      .limit(20)
+    const supabase = createClient()
+    const { data } = await supabase.from('calculations').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20)
     if (data) setHistory(data)
   }
 
   async function handleLogout() {
+    const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
-  const usableW = pW - 2 * margin
-  const usableH = pH - 2 * margin
-  const cols = mW > 0 ? Math.max(0, Math.floor((usableW + gap) / (mW + gap))) : 0
-  const rows = mH > 0 ? Math.max(0, Math.floor((usableH + gap) / (mH + gap))) : 0
+  const usableW = pW - 2*margin, usableH = pH - 2*margin
+  const cols = mW > 0 ? Math.max(0, Math.floor((usableW+gap)/(mW+gap))) : 0
+  const rows = mH > 0 ? Math.max(0, Math.floor((usableH+gap)/(mH+gap))) : 0
   const perSheet = cols * rows
-  const sheetsNeeded = perSheet > 0 ? Math.ceil(qty / perSheet) : 0
-  const wasteItems = sheetsNeeded * perSheet - qty
-  const efficiency = sheetsNeeded * perSheet > 0 ? ((qty / (sheetsNeeded * perSheet)) * 100) : 0
-  const printBase = sheetsNeeded * printCost + setupCost
-  const overheadAmt = printBase * (overhead / 100)
+  const sheetsNeeded = perSheet > 0 ? Math.ceil(qty/perSheet) : 0
+  const wasteItems = sheetsNeeded*perSheet - qty
+  const efficiency = sheetsNeeded*perSheet > 0 ? (qty/(sheetsNeeded*perSheet)*100) : 0
+  const printBase = sheetsNeeded*printCost + setupCost
+  const overheadAmt = printBase*(overhead/100)
   const subtotal = printBase + overheadAmt
-  const vatAmt = subtotal * (vat / 100)
+  const vatAmt = subtotal*(vat/100)
   const total = subtotal + vatAmt
-  const unitCost = qty > 0 ? total / qty : 0
+  const unitCost = qty > 0 ? total/qty : 0
 
   async function saveCalc() {
     if (!user) return
-    const { error } = await supabase.from('calculations').insert({
-      user_id: user.id,
-      paper_size: paperSize,
-      paper_w: pW, paper_h: pH,
-      material_w: mW, material_h: mH,
-      qty, total: Math.round(total),
-      per_sheet: perSheet,
-      efficiency: Math.round(efficiency * 10) / 10
+    setSaving(true)
+    const supabase = createClient()
+    await supabase.from('calculations').insert({
+      user_id: user.id, paper_size: paperSize,
+      paper_w: pW, paper_h: pH, material_w: mW, material_h: mH,
+      qty, total: Math.round(total), per_sheet: perSheet,
+      efficiency: Math.round(efficiency*10)/10
     })
-    if (!error) {
-      loadHistory(user.id)
-      setActiveTab('history')
-    }
+    await loadHistory(user.id)
+    setSaving(false)
+    setActiveTab('history')
   }
 
-  function PaperVis({ cols, rows, pW, pH, mW, mH, gap, margin }) {
-  const maxW = 300, maxH = 200
-  const scaleX = maxW / pW, scaleY = maxH / pH
-  const scale = Math.min(scaleX, scaleY, 1)
-  const vw = Math.round(pW * scale), vh = Math.round(pH * scale)
-  const smrg = Math.round(margin * scale)
-  const smW = Math.max(1, Math.round(mW * scale))
-  const smH = Math.max(1, Math.round(mH * scale))
-  const sgap = Math.round(gap * scale)
-  const items = []
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      items.push({ x: smrg + c * (smW + sgap), y: smrg + r * (smH + sgap), n: r * cols + c + 1 })
-    }
-  }
-  return (
-    <div className="flex flex-col items-center gap-2 bg-gray-800 rounded-xl p-4 mb-4">
-      <p className="text-xs text-gray-400">{pW}×{pH}мм цаасан дээр {cols}×{rows} = {cols*rows} ширхэг</p>
-      <div className="relative bg-gray-900 border border-violet-500/30 rounded" style={{width:vw, height:vh}}>
-        {items.map(({x,y,n}) => (
-          <div key={n} className="absolute border border-violet-500/50 bg-violet-500/10 flex items-center justify-center text-violet-400 font-bold"
-            style={{left:x, top:y, width:smW, height:smH, fontSize: Math.max(6, Math.min(10, smW/3))}}>
-            {smW > 12 && smH > 8 ? n : ''}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
   const fmt = n => Math.round(n).toLocaleString()
+  const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
-  if (!user) return (
-    <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Ачааллаж байна...</p>
-    </main>
-  )
+  if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b'}}>Ачааллаж байна...</div>
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
-      <div className="border-b border-gray-800 bg-gray-900 px-6 py-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold">Хэвлэлийн тооцоолуур</h1>
-          <p className="text-gray-400 text-xs">{user.email}</p>
+    <div style={S.shell}>
+      {/* SIDEBAR */}
+      <div style={S.sidebar}>
+        <div style={S.sbLogo}>
+          <div style={S.sbIcon}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/></svg>
+          </div>
+          <span style={S.sbName}>PrintCalc Pro</span>
         </div>
-        <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-white transition-colors">
-          Гарах →
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-800 bg-gray-900">
-        {['calc', 'result', 'history'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-violet-400 border-b-2 border-violet-500' : 'text-gray-400 hover:text-white'}`}>
-            {tab === 'calc' ? 'Тооцоо' : tab === 'result' ? 'Үр дүн' : 'Түүх'}
+        <div style={S.sbSection}>Үндсэн</div>
+        {[
+          {id:'calc', label:'Тооцоо', icon:<path d="M9 7h6M9 12h6M9 17h4"/>},
+          {id:'result', label:'Үр дүн', icon:<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>},
+          {id:'history', label:'Түүх', icon:<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></>},
+        ].map(t => (
+          <button key={t.id} style={{...S.sbItem, ...(activeTab===t.id ? S.sbItemActive : {})}} onClick={()=>setActiveTab(t.id)}>
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">{t.icon}</svg>
+            {t.label}
           </button>
         ))}
+        <div style={{height:16}}/>
+        <div style={S.sbSection}>Тохиргоо</div>
+        <button style={S.sbItem} onClick={()=>router.push('/profile')}>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          Профайл
+        </button>
+        <div style={S.sbSpacer}/>
+        <div style={S.sbUser}>
+          <div style={S.sbAvatar}>{initials}</div>
+          <div>
+            <div style={S.sbUname}>{profile?.company_name || 'Компани'}</div>
+            <div style={S.sbEmail}>{user.email?.slice(0,22)}</div>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-6">
-
-        {/* CALC TAB */}
-        {activeTab === 'calc' && (
-          <div className="space-y-4">
-            {/* Paper size */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Цаасны хэмжээ</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Стандарт</label>
-                  <select value={paperSize} onChange={e => setPaperSize(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-                    {Object.keys(PAPER_SIZES).map(s => <option key={s} value={s}>{s}</option>)}
-                    <option value="custom">Дурын</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Чиглэл</label>
-                  <div className="flex bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-                    <button onClick={() => setOrient('portrait')}
-                      className={`flex-1 py-2 text-sm transition-colors ${orient === 'portrait' ? 'bg-violet-600 text-white' : 'text-gray-400'}`}>↕ Босоо</button>
-                    <button onClick={() => setOrient('landscape')}
-                      className={`flex-1 py-2 text-sm transition-colors ${orient === 'landscape' ? 'bg-violet-600 text-white' : 'text-gray-400'}`}>↔ Хэвтээ</button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Өргөн (мм)</label>
-                  <input type="text" inputMode="numeric" value={pW} onChange={e => setPW(e.target.value === '' ? '' : +e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Өндөр (мм)</label>
-                  <input type="text" inputMode="numeric" value={pH} onChange={e => setPH(+e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" onFocus={e => e.target.select()} />
-                </div>
-              </div>
-            </div>
-
-            {/* Material */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Материалын хэмжээ</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[['Материал өргөн (мм)', mW, setMW], ['Материал өндөр (мм)', mH, setMH],
-                  ['Зайлуулах зай (мм)', gap, setGap], ['Ирмэгийн зай (мм)', margin, setMargin]].map(([label, val, setter]) => (
-                  <div key={label}>
-                    <label className="text-xs text-gray-400 mb-1 block">{label}</label>
-                    <input type="text" inputMode="numeric" value={val} onChange={e => setter(+e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Cost */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Үнийн тохиргоо</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[['Нийт ширхэг', qty, setQty], ['Ажиллагааны үнэ (₮)', setupCost, setSetupCost],
-                  ['Хуудасны үнэ (₮)', printCost, setPrintCost], ['Нэмэгдэл (%)', overhead, setOverhead],
-                  ['НӨАТ (%)', vat, setVat]].map(([label, val, setter]) => (
-                  <div key={label}>
-                    <label className="text-xs text-gray-400 mb-1 block">{label}</label>
-                    <input type="text" inputMode="numeric" value={val} onChange={e => setter(+e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={() => setActiveTab('result')}
-              className="w-full bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 rounded-xl transition-colors">
-              Тооцоолох →
-            </button>
-          </div>
-        )}
-
-        {/* RESULT TAB */}
-        {activeTab === 'result' && (
-          <div className="space-y-4">
-            <PaperVis cols={cols} rows={rows} pW={pW} pH={pH} mW={mW} mH={mH} gap={gap} margin={margin} />
-            {/* Metrics */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                ['Нэг хуудсанд', perSheet, 'ш'],
-                ['Нийт хуудас', fmt(sheetsNeeded), 'хуудас'],
-                ['Үр ашиг', efficiency.toFixed(1), '%'],
-                ['Баганы тоо', cols, ''],
-                ['Мөрийн тоо', rows, ''],
-                ['Хаягдал', fmt(wasteItems), 'ш'],
-              ].map(([label, val, unit]) => (
-                <div key={label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-violet-400">{val}<span className="text-xs text-gray-500 ml-1">{unit}</span></p>
-                  <p className="text-xs text-gray-400 mt-1">{label}</p>
-                </div>
+      {/* MAIN */}
+      <div style={S.main}>
+        <div style={S.topbar}>
+          <span style={S.tbTitle}>Хэвлэлийн тооцоо</span>
+          <div style={S.tbRight}>
+            <div style={S.tabWrap}>
+              {['calc','result','history'].map(t => (
+                <button key={t} style={{...S.tab, ...(activeTab===t ? S.tabActive : {})}} onClick={()=>setActiveTab(t)}>
+                  {t==='calc'?'Тооцоо':t==='result'?'Үр дүн':'Түүх'}
+                </button>
               ))}
             </div>
-
-            {/* Total */}
-            <div className="bg-violet-600/20 border border-violet-500/40 rounded-xl p-5">
-              <p className="text-sm text-violet-300 mb-1">Нийт үнийн дүн</p>
-              <p className="text-4xl font-bold">₮{fmt(total)}</p>
-              <p className="text-sm text-gray-400 mt-2">Нэгж өртөг: ₮{unitCost.toFixed(1)}/ш</p>
-            </div>
-
-            {/* Breakdown */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
-              {[
-                ['Хуудасны зардал', `₮${fmt(sheetsNeeded * printCost)}`],
-                ['Ажиллагааны зардал', `₮${fmt(setupCost)}`],
-                [`Нэмэгдэл (${overhead}%)`, `₮${fmt(overheadAmt)}`],
-                [`НӨАТ (${vat}%)`, `₮${fmt(vatAmt)}`],
-              ].map(([l, r]) => (
-                <div key={l} className="flex justify-between text-sm">
-                  <span className="text-gray-400">{l}</span>
-                  <span className="text-white">{r}</span>
-                </div>
-              ))}
-            </div>
-
-            <button onClick={saveCalc}
-              className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-xl transition-colors">
-              Хадгалах ↓
-            </button>
+            <button onClick={handleLogout} style={{padding:'6px 14px', background:'transparent', border:'0.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#64748b', cursor:'pointer'}}>Гарах</button>
           </div>
-        )}
+        </div>
 
-        {/* HISTORY TAB */}
-        {activeTab === 'history' && (
-          <div className="space-y-3">
-            {history.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
-                <p className="text-4xl mb-3">📋</p>
-                <p>Хадгалагдсан тооцоо байхгүй</p>
-              </div>
-            ) : history.map(h => (
-              <div key={h.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <div className="flex justify-between items-start">
+        <div style={S.content}>
+          {/* CALC TAB */}
+          {activeTab === 'calc' && (
+            <div style={{maxWidth:680}}>
+              <div style={S.card}>
+                <div style={S.cardTitle}>Цаасны хэмжээ</div>
+                <div style={S.fieldRow}>
                   <div>
-                    <p className="font-semibold">{h.paper_size} / {h.material_w}×{h.material_h}мм</p>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(h.created_at).toLocaleDateString('mn-MN')}</p>
+                    <label style={S.fieldLabel}>Стандарт</label>
+                    <select style={S.sectionSelect} value={paperSize} onChange={e=>setPaperSize(e.target.value)}>
+                      {Object.keys(PAPER_SIZES).map(s=><option key={s} value={s}>{s}</option>)}
+                      <option value="custom">Дурын</option>
+                    </select>
                   </div>
-                  <p className="text-violet-400 font-bold text-lg">₮{h.total.toLocaleString()}</p>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <span className="text-xs bg-gray-800 px-2 py-1 rounded-full text-gray-400">{h.qty?.toLocaleString()} ш</span>
-                  <span className="text-xs bg-gray-800 px-2 py-1 rounded-full text-gray-400">{h.per_sheet} ш/хуудас</span>
-                  <span className="text-xs bg-gray-800 px-2 py-1 rounded-full text-gray-400">{h.efficiency}% үр ашиг</span>
+                  <div>
+                    <label style={S.fieldLabel}>Чиглэл</label>
+                    <div style={S.orientWrap}>
+                      <button style={{...S.orientBtn,...(orient==='portrait'?S.orientBtnActive:{})}} onClick={()=>setOrient('portrait')}>↕ Босоо</button>
+                      <button style={{...S.orientBtn,...(orient==='landscape'?S.orientBtnActive:{})}} onClick={()=>setOrient('landscape')}>↔ Хэвтээ</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={S.fieldLabel}>Өргөн (мм)</label>
+                    <input style={S.fieldInput} type="text" inputMode="numeric" value={pW} onFocus={e=>e.target.select()} onChange={e=>setPW(+e.target.value||0)}/>
+                  </div>
+                  <div>
+                    <label style={S.fieldLabel}>Өндөр (мм)</label>
+                    <input style={S.fieldInput} type="text" inputMode="numeric" value={pH} onFocus={e=>e.target.select()} onChange={e=>setPH(+e.target.value||0)}/>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div style={{...S.card, marginTop:12}}>
+                <div style={S.cardTitle}>Материалын хэмжээ</div>
+                <div style={S.fieldRow}>
+                  {[['Өргөн (мм)',mW,setMW],['Өндөр (мм)',mH,setMH],['Зайлуулах зай (мм)',gap,setGap],['Ирмэгийн зай (мм)',margin,setMargin]].map(([l,v,s])=>(
+                    <div key={l}>
+                      <label style={S.fieldLabel}>{l}</label>
+                      <input style={S.fieldInput} type="text" inputMode="numeric" value={v} onFocus={e=>e.target.select()} onChange={e=>s(+e.target.value||0)}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{...S.card, marginTop:12}}>
+                <div style={S.cardTitle}>Үнийн тохиргоо</div>
+                <div style={S.fieldRow}>
+                  {[['Нийт ширхэг',qty,setQty],['Ажиллагааны үнэ (₮)',setupCost,setSetupCost],['Хуудасны үнэ (₮)',printCost,setPrintCost],['Нэмэгдэл (%)',overhead,setOverhead],['НӨАТ (%)',vat,setVat]].map(([l,v,s])=>(
+                    <div key={l}>
+                      <label style={S.fieldLabel}>{l}</label>
+                      <input style={S.fieldInput} type="text" inputMode="numeric" value={v} onFocus={e=>e.target.select()} onChange={e=>s(+e.target.value||0)}/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button style={S.calcBtn} onClick={()=>setActiveTab('result')}>Тооцоолох →</button>
+            </div>
+          )}
+
+          {/* RESULT TAB */}
+          {activeTab === 'result' && (
+            <div style={{maxWidth:680}}>
+              <div style={S.metricsGrid}>
+                {[['Нэг хуудсанд',perSheet,'ш'],['Нийт хуудас',fmt(sheetsNeeded),'хуудас'],['Үр ашиг',efficiency.toFixed(1),'%'],['Нэгж өртөг','₮'+unitCost.toFixed(1),'/ш']].map(([l,v,u])=>(
+                  <div key={l} style={S.metricCard}>
+                    <div style={S.mcLabel}>{l}</div>
+                    <div style={S.mcVal}>{v}<span style={S.mcUnit}>{u}</span></div>
+                  </div>
+                ))}
+              </div>
+              <div style={S.twoCol}>
+                <div style={S.card}>
+                  <div style={S.cardTitle}>Байршуулалтын зураг</div>
+                  <div style={S.paperVis}>
+                    <PaperVis cols={cols} rows={rows} pW={pW} pH={pH} mW={mW} mH={mH} gap={gap} margin={margin}/>
+                    <div style={S.visLabel}>{pW}×{pH}мм · {cols}×{rows} = {perSheet}ш</div>
+                  </div>
+                </div>
+                <div style={S.card}>
+                  <div style={S.cardTitle}>Зардлын задаргаа</div>
+                  {[['Хуудасны зардал',fmt(sheetsNeeded*printCost)],['Ажиллагааны зардал',fmt(setupCost)],[`Нэмэгдэл (${overhead}%)`,fmt(overheadAmt)],[`НӨАТ (${vat}%)`,fmt(vatAmt)]].map(([l,v])=>(
+                    <div key={l} style={S.brRow}><span style={S.brLabel}>{l}</span><span style={S.brVal}>₮{v}</span></div>
+                  ))}
+                  <div style={S.brTotal}>
+                    <span style={S.brTL}>Нийт дүн</span>
+                    <span style={S.brTV}>₮{fmt(total)}</span>
+                  </div>
+                  <button style={S.saveBtn} onClick={saveCalc} disabled={saving}>{saving?'Хадгалж байна...':'Хадгалах ↓'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* HISTORY TAB */}
+          {activeTab === 'history' && (
+            <div style={{maxWidth:680}}>
+              {history.length === 0 ? (
+                <div style={S.empty}>
+                  <span style={{fontSize:40}}>📋</span>
+                  <p>Хадгалагдсан тооцоо байхгүй байна</p>
+                </div>
+              ) : history.map(h => (
+                <div key={h.id} style={S.histItem}>
+                  <div style={S.histTop}>
+                    <div>
+                      <div style={S.histName}>{h.paper_size} / {h.material_w}×{h.material_h}мм</div>
+                      <div style={{fontSize:11,color:'#94a3b8',marginTop:2}}>{new Date(h.created_at).toLocaleDateString('mn-MN')}</div>
+                    </div>
+                    <span style={S.histAmt}>₮{h.total?.toLocaleString()}</span>
+                  </div>
+                  <div style={S.histTags}>
+                    <span style={S.tag}>{h.qty?.toLocaleString()} ш</span>
+                    <span style={S.tag}>{h.per_sheet} ш/хуудас</span>
+                    <span style={S.tag}>{h.efficiency}% үр ашиг</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </main>
+    </div>
   )
 }
