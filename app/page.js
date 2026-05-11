@@ -13,7 +13,25 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-
+useEffect(() => {
+  async function checkUser() {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('company_name')
+        .eq('user_id', user.id)
+        .single()
+      if (prof?.company_name) {
+        router.push('/dashboard')
+      } else {
+        router.push('/profile')
+      }
+    }
+  }
+  checkUser()
+}, [])
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
