@@ -61,6 +61,7 @@ async function handleLogoUpload(e) {
   if (!error) {
     const { data } = supabase.storage.from('logos').getPublicUrl(path)
     set('logo_url', data.publicUrl)
+    await supabase.from('profiles').update({ logo_url: data.publicUrl }).eq('user_id', user.id)
   }
 }
   async function handleSave(e) {
