@@ -136,12 +136,33 @@ export default function Profile() {
           ))}
         </div>
 
+async function handleLogoUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const supabase = createClient()
+  const ext = file.name.split('.').pop()
+  const path = `${user.id}/logo.${ext}`
+  const { error } = await supabase.storage
+    .from('logos')
+    .upload(path, file, { upsert: true })
+  if (!error) {
+    const { data } = supabase.storage.from('logos').getPublicUrl(path)
+    set('logo_url', data.publicUrl)
+  }
+}
         <form onSubmit={handleSave}>
           {/* КОМПАНИ */}
           {activeSection === 'company' && (
             <div style={s.card}>
               <div style={s.cardTitle}>Компанийн мэдээлэл</div>
               <div style={{...s.grid1, marginBottom:12}}>
+                <div style={{...s.field, marginBottom:12}}>
+  <label style={s.label}>Компанийн лого</label>
+  {form.logo_url && (
+    <img src={form.logo_url} alt="logo" style={{width:60,height:60,objectFit:'contain',borderRadius:8,border:'0.5px solid #e2e8f0',marginBottom:8}}/>
+  )}
+  <input type="file" accept="image/*" onChange={handleLogoUpload} style={{fontSize:13,color:'#374151'}}/>
+</div>
                 <div style={s.field}>
                   <label style={s.label}>Компанийн нэр *</label>
                   <input style={s.input} placeholder="Манай Хэвлэл ХХК" value={form.company_name}
