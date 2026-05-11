@@ -47,7 +47,20 @@ export default function Profile() {
   }, [])
 
   function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-
+async function handleLogoUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const supabase = createClient()
+  const ext = file.name.split('.').pop()
+  const path = `${user.id}/logo.${ext}`
+  const { error } = await supabase.storage
+    .from('logos')
+    .upload(path, file, { upsert: true })
+  if (!error) {
+    const { data } = supabase.storage.from('logos').getPublicUrl(path)
+    set('logo_url', data.publicUrl)
+  }
+}
   async function handleSave(e) {
     e.preventDefault()
     setLoading(true)
@@ -136,20 +149,7 @@ export default function Profile() {
           ))}
         </div>
 
-async function handleLogoUpload(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  const supabase = createClient()
-  const ext = file.name.split('.').pop()
-  const path = `${user.id}/logo.${ext}`
-  const { error } = await supabase.storage
-    .from('logos')
-    .upload(path, file, { upsert: true })
-  if (!error) {
-    const { data } = supabase.storage.from('logos').getPublicUrl(path)
-    set('logo_url', data.publicUrl)
-  }
-}
+
         <form onSubmit={handleSave}>
           {/* КОМПАНИ */}
           {activeSection === 'company' && (
