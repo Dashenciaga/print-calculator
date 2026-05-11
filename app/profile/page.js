@@ -25,23 +25,25 @@ export default function Profile() {
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
       if (prof) {
-        setForm({
-          company_name: prof.company_name || '',
-          phone: prof.phone || '',
-          address: prof.address || '',
-          website: prof.website || '',
-          contact_name: prof.contact_name || '',
-          contact_email: prof.contact_email || '',
-          register_number: prof.register_number || '',
-          bank_name: prof.bank_name || '',
-          bank_account: prof.bank_account || '',
-          default_vat: prof.default_vat ?? 10,
-          default_overhead: prof.default_overhead ?? 15,
-          default_print_cost: prof.default_print_cost ?? 80,
-        })
-      } else {
-        setIsNew(true)
-      }
+  setForm({
+    company_name: prof.company_name || '',
+    phone: prof.phone || '',
+    address: prof.address || '',
+    website: prof.website || '',
+    contact_name: prof.contact_name || '',
+    contact_email: prof.contact_email || '',
+    register_number: prof.register_number || '',
+    bank_name: prof.bank_name || '',
+    bank_account: prof.bank_account || '',
+    default_vat: prof.default_vat ?? 10,
+    default_overhead: prof.default_overhead ?? 15,
+    default_print_cost: prof.default_print_cost ?? 80,
+    logo_url: prof.logo_url || '',
+  })
+  setIsNew(false)
+} else {
+  setIsNew(true)
+}
     }
     init()
   }, [])
