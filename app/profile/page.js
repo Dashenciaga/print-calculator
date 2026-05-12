@@ -96,14 +96,14 @@ export default function Profile() {
       const compressed = await compressImage(file)
       const path = `${user.id}/logo.jpg`
       const { error: uploadError } = await supabase.storage
-        from('Logos')
+        .from('logos')
         .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
       if (uploadError) {
         alert('Лого хуулахад алдаа гарлаа: ' + uploadError.message)
         return
       }
       // Cache bust хийхийн тулд timestamp нэмнэ
-      const { data } = supabase.storagefrom('Logos').getPublicUrl(path)
+      const { data } = supabase.storage.from('logos').getPublicUrl(path)
       const logoUrl = data.publicUrl + '?t=' + Date.now()
       set('logo_url', logoUrl)
       await supabase.from('profiles').update({ logo_url: logoUrl }).eq('user_id', user.id)
