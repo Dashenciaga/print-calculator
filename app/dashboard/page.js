@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -367,6 +367,53 @@ function MiniChart({ data }) {
   )
 }
 
+// ── Animated Logo (нүүр хуудасны логотой яг адил) ─────────────
+function AnimatedLogo({ size = 32 }) {
+  const svgRef = useRef(null)
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const barDefs = [
+      {x:8,  baseY:4,  h:46, op:.85, color:'#4f46e5'},
+      {x:8,  baseY:58, h:10, op:.35, color:'#4f46e5'},
+      {x:21, baseY:4,  h:22, op:.6,  color:'#4f46e5'},
+      {x:21, baseY:34, h:42, op:.85, color:'#4f46e5'},
+      {x:34, baseY:4,  h:58, op:.9,  color:'#818cf8'},
+      {x:34, baseY:70, h:6,  op:.3,  color:'#818cf8'},
+      {x:47, baseY:14, h:10, op:.4,  color:'#4f46e5'},
+      {x:47, baseY:32, h:34, op:.75, color:'#4f46e5'},
+      {x:60, baseY:4,  h:50, op:.55, color:'#4f46e5'},
+      {x:60, baseY:62, h:14, op:.3,  color:'#4f46e5'},
+    ]
+    const ns = 'http://www.w3.org/2000/svg'
+    const rects = barDefs.map((b) => {
+      const r = document.createElementNS(ns, 'rect')
+      r.setAttribute('width', 7)
+      r.setAttribute('rx', '3.5')
+      r.setAttribute('fill', b.color)
+      r.setAttribute('opacity', b.op)
+      r.setAttribute('x', b.x)
+      r.setAttribute('y', b.baseY)
+      r.setAttribute('height', b.h)
+      svg.appendChild(r)
+      return { el: r, ...b }
+    })
+    let floatRaf = null
+    let t = 0
+    const phases = rects.map((_, i) => i * 0.45)
+    function loop() {
+      t += 0.018
+      rects.forEach((r, i) => {
+        r.el.setAttribute('y', r.baseY + Math.sin(t + phases[i]) * 2.5)
+      })
+      floatRaf = requestAnimationFrame(loop)
+    }
+    floatRaf = requestAnimationFrame(loop)
+    return () => { if (floatRaf) cancelAnimationFrame(floatRaf) }
+  }, [])
+  return <svg ref={svgRef} width={size} height={size} viewBox="0 0 75 80" fill="none" />
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -516,11 +563,11 @@ export default function Dashboard() {
       {/* SIDEBAR */}
       <div style={S.sidebar}>
         <div style={S.sbLogo}>
-          <div style={S.sbIcon}>
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
-              <rect x="2" y="3" width="20" height="18" rx="2" />
-              <path d="M8 7h8M8 12h5" />
-            </svg>
+          <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {profile?.logo_url
+              ? <img src={profile.logo_url} alt="logo" style={{ width: 32, height: 32, objectFit: 'cover' }} />
+              : <AnimatedLogo size={32} />
+            }
           </div>
           <div>
             <div style={S.sbName}>PrintCalc Pro</div>
