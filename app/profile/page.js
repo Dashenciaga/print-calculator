@@ -54,7 +54,7 @@ async function handleLogoUpload(e) {
   if (!file) return
   const supabase = createClient()
   const ext = file.name.split('.').pop()
-  const path = `${user.id}/logo.${ext}`
+  .upload(path, file, { upsert: true, contentType: file.type })
   const { error } = await supabase.storage
     .from('logos')
     .upload(path, file, { upsert: true })
