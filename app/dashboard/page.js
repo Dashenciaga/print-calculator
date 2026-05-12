@@ -205,7 +205,7 @@ export default function Dashboard() {
         </button>
         <div style={S.sbSpacer}/>
         <div style={S.sbUser}>
-          <div style={S.sbAvatar}>{initials}</div>
+         <div style={S.sbAvatar}>{profile?.logo_url ? <img src={profile.logo_url} alt="logo" style={{width:30,height:30,borderRadius:'50%',objectFit:'cover'}}/> : initials}</div>
           <div>
             <div style={S.sbUname}>{profile?.company_name || 'Компани'}</div>
             <div style={S.sbEmail}>{user.email?.slice(0,22)}</div>
