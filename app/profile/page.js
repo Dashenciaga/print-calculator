@@ -8,12 +8,14 @@ export default function Profile() {
   const [isNew, setIsNew] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [activeSection, setActiveSection] = useState('company')
   const [form, setForm] = useState({
     company_name: '', phone: '', address: '', website: '',
     contact_name: '', contact_email: '',
     register_number: '', bank_name: '', bank_account: '',
     default_vat: 10, default_overhead: 15, default_print_cost: 80,
+    logo_url: '',
   })
   const router = useRouter()
 
@@ -25,45 +27,93 @@ export default function Profile() {
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
       if (prof) {
-  setForm({
-    company_name: prof.company_name || '',
-    phone: prof.phone || '',
-    address: prof.address || '',
-    website: prof.website || '',
-    contact_name: prof.contact_name || '',
-    contact_email: prof.contact_email || '',
-    register_number: prof.register_number || '',
-    bank_name: prof.bank_name || '',
-    bank_account: prof.bank_account || '',
-    default_vat: prof.default_vat ?? 10,
-    default_overhead: prof.default_overhead ?? 15,
-    default_print_cost: prof.default_print_cost ?? 80,
-    logo_url: prof.logo_url || '',
-  })
-  setIsNew(false)
-} else {
-  setIsNew(true)
-}
+        setForm({
+          company_name: prof.company_name || '',
+          phone: prof.phone || '',
+          address: prof.address || '',
+          website: prof.website || '',
+          contact_name: prof.contact_name || '',
+          contact_email: prof.contact_email || '',
+          register_number: prof.register_number || '',
+          bank_name: prof.bank_name || '',
+          bank_account: prof.bank_account || '',
+          default_vat: prof.default_vat ?? 10,
+          default_overhead: prof.default_overhead ?? 15,
+          default_print_cost: prof.default_print_cost ?? 80,
+          logo_url: prof.logo_url || '',
+        })
+        setIsNew(false)
+      } else {
+        setIsNew(true)
+      }
     }
     init()
   }, [])
 
   function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-async function handleLogoUpload(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  const supabase = createClient()
-  const ext = file.name.split('.').pop()
-  .upload(path, file, { upsert: true, contentType: file.type })
-  const { error } = await supabase.storage
-    .from('logos')
-    .upload(path, file, { upsert: true })
-  if (!error) {
-    const { data } = supabase.storage.from('logos').getPublicUrl(path)
-    set('logo_url', data.publicUrl)
-    await supabase.from('profiles').update({ logo_url: data.publicUrl }).eq('user_id', user.id)
+
+  // Зургийг жижигрүүлэх функц
+  function compressImage(file, maxSizeMB = 1) {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let { width, height } = img
+          // Хэмжээг багасгах (дээд тал 800px)
+          const MAX_DIM = 800
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) { height = Math.round(height * MAX_DIM / width); width = MAX_DIM }
+            else { width = Math.round(width * MAX_DIM / height); height = MAX_DIM }
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          // Чанарыг бууруулж байршуулах
+          let quality = 0.8
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality)
+        }
+        img.src = e.target.result
+      }
+      reader.readAsDataURL(file)
+    })
   }
-}
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0]
+    if (!file || !user) return
+    // 10MB-аас том бол татгалзана
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Файл хэт том байна. 10MB-аас бага файл сонгоно уу.')
+      return
+    }
+    setUploading(true)
+    try {
+      const supabase = createClient()
+      // Зургийг автоматаар жижигрүүлж compress хийнэ
+      const compressed = await compressImage(file)
+      const path = `${user.id}/logo.jpg`
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
+      if (uploadError) {
+        alert('Лого хуулахад алдаа гарлаа: ' + uploadError.message)
+        return
+      }
+      // Cache bust хийхийн тулд timestamp нэмнэ
+      const { data } = supabase.storage.from('logos').getPublicUrl(path)
+      const logoUrl = data.publicUrl + '?t=' + Date.now()
+      set('logo_url', logoUrl)
+      await supabase.from('profiles').update({ logo_url: logoUrl }).eq('user_id', user.id)
+    } catch (err) {
+      alert('Алдаа: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setLoading(true)
@@ -106,6 +156,8 @@ async function handleLogoUpload(e) {
     saveBtn: { width:'100%', padding:'12px', background: saved?'#10b981':'#4f46e5', color:'white', border:'none', borderRadius:10, fontSize:15, fontWeight:600, cursor:'pointer', transition:'background .2s', marginTop:8 },
     skipBtn: { width:'100%', padding:'10px', background:'transparent', color:'#94a3b8', border:'none', fontSize:13, cursor:'pointer', marginTop:8 },
     hint: { fontSize:11, color:'#94a3b8', marginTop:4 },
+    logoBox: { display:'flex', alignItems:'center', gap:14, padding:'12px', background:'#f8f9fb', borderRadius:10, border:'0.5px solid #e2e8f0', marginBottom:12 },
+    uploadBtn: { padding:'7px 14px', background:'#4f46e5', color:'white', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' },
   }
 
   const sections = [
@@ -123,7 +175,9 @@ async function handleLogoUpload(e) {
       <div style={s.topbar}>
         <div style={s.tbLeft}>
           <div style={s.tbIcon}>
-            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/></svg>
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2">
+              <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
+            </svg>
           </div>
           <span style={s.tbName}>PrintCalc Pro</span>
         </div>
@@ -136,7 +190,10 @@ async function handleLogoUpload(e) {
 
         {user && (
           <div style={s.emailBox}>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" strokeWidth="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
             <div>
               <div style={s.emailLabel}>Бүртгэлийн и-мэйл</div>
               <div style={s.emailVal}>{user.email}</div>
@@ -146,26 +203,46 @@ async function handleLogoUpload(e) {
 
         <div style={s.tabs}>
           {sections.map(sec => (
-            <button key={sec.id} style={{...s.tab,...(activeSection===sec.id?s.tabActive:{})}} onClick={()=>setActiveSection(sec.id)}>
+            <button key={sec.id}
+              style={{...s.tab,...(activeSection===sec.id ? s.tabActive : {})}}
+              onClick={() => setActiveSection(sec.id)}>
               {sec.label}
             </button>
           ))}
         </div>
-
 
         <form onSubmit={handleSave}>
           {/* КОМПАНИ */}
           {activeSection === 'company' && (
             <div style={s.card}>
               <div style={s.cardTitle}>Компанийн мэдээлэл</div>
+
+              {/* Лого upload */}
+              <div style={{...s.field, marginBottom:16}}>
+                <label style={s.label}>Компанийн лого</label>
+                <div style={s.logoBox}>
+                  {form.logo_url ? (
+                    <img src={form.logo_url} alt="logo"
+                      style={{width:56, height:56, objectFit:'contain', borderRadius:8, border:'0.5px solid #e2e8f0', background:'white'}}/>
+                  ) : (
+                    <div style={{width:56, height:56, borderRadius:8, border:'1.5px dashed #e2e8f0', display:'flex', alignItems:'center', justifyContent:'center', background:'white', color:'#94a3b8', fontSize:20}}>
+                      🏢
+                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="logo-input" style={{...s.uploadBtn, display:'inline-block', cursor:'pointer'}}>
+                      {uploading ? 'Хуулж байна...' : form.logo_url ? 'Солих' : 'Лого оруулах'}
+                    </label>
+                    <input id="logo-input" type="file" accept="image/*"
+                      onChange={handleLogoUpload}
+                      style={{display:'none'}}
+                      disabled={uploading}/>
+                    <div style={s.hint}>PNG, JPG, SVG — дээд тал 2MB</div>
+                  </div>
+                </div>
+              </div>
+
               <div style={{...s.grid1, marginBottom:12}}>
-                <div style={{...s.field, marginBottom:12}}>
-  <label style={s.label}>Компанийн лого</label>
-  {form.logo_url && (
-    <img src={form.logo_url} alt="logo" style={{width:60,height:60,objectFit:'contain',borderRadius:8,border:'0.5px solid #e2e8f0',marginBottom:8}}/>
-  )}
-  <input type="file" accept="image/*" onChange={handleLogoUpload} style={{fontSize:13,color:'#374151'}}/>
-</div>
                 <div style={s.field}>
                   <label style={s.label}>Компанийн нэр *</label>
                   <input style={s.input} placeholder="Манай Хэвлэл ХХК" value={form.company_name}
@@ -275,7 +352,7 @@ async function handleLogoUpload(e) {
             {saved ? '✓ Хадгалагдлаа' : loading ? 'Хадгалж байна...' : 'Хадгалах'}
           </button>
           {isNew && (
-            <button type="button" style={s.skipBtn} onClick={()=>router.push('/dashboard')}>
+            <button type="button" style={s.skipBtn} onClick={() => router.push('/dashboard')}>
               Дараа оруулна → алгасах
             </button>
           )}
