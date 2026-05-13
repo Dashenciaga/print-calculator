@@ -135,7 +135,7 @@ export default function ProCalculator() {
     fold:false, glue:false, stitch:false, cut:true,
   })
 
-  // Ажиллагааны үнэ автомат тооцоо
+  // Ажиллагааны үнэ автомат тооцоо (нэг ажлын бэлтгэлийн зардал)
   const autoSetupCost = useMemo(() => {
     const base = {
       offset:  { '1+0':30000, '1+1':55000, '4+0':90000,  '4+4':150000 },
@@ -146,16 +146,8 @@ export default function ProCalculator() {
       newspaper:45000, book:28000, blank:-8000, sticker:8000,
       namecard:0, packaging:25000,
     }
-    const baseCost = (base[printMethod]?.[colorOption] ?? 50000) + (adj[productType] ?? 0)
-    // Олон нүүрт бүтээгдэхүүн: 4 нүүр тутам нэмэлт хавтан хийгдэнэ
-    const isMultiPage = ['magazine','book','newspaper','calendar'].includes(productType)
-    if (isMultiPage && pages > 4) {
-      const extraForms = Math.floor((pages - 4) / 4)
-      const perFormCost = printMethod === 'offset' ? 15000 : 3000
-      return baseCost + extraForms * perFormCost
-    }
-    return baseCost
-  }, [printMethod, colorOption, productType, pages])
+    return (base[printMethod]?.[colorOption] ?? 50000) + (adj[productType] ?? 0)
+  }, [printMethod, colorOption, productType])
 
   // Даралтын үнэ автомат тооцоо
   const autoPressureCost = useMemo(() => {
@@ -339,10 +331,16 @@ export default function ProCalculator() {
     const masterArea = MASTER_W * MASTER_H
     const totalPaperCost = (innerSheets * masterArea / A0_AREA) * innerPaperPrice
                          + (coverSheets * masterArea / A0_AREA) * coverPaperPrice
-    // Хавтангийн тоо: 1+1→2, 4+4→8 (хоёр талыг тооцно)
-    const plateCost = printMethod === 'offset' ? (PLATE_COUNT[colorOption] || 4) * 3850 : 0
-    // Даралтын зардал: хуудас 0 бол 0
-    const pressureTotal = totalSheets > 0 ? pressureCost * Math.ceil(totalSheets/1000) : 0
+    // Хавтан: form тус бүрд бүтэн хавтангийн иж бүрдэл шаардлагатай
+    const innerForms = (innerPages > 0 && pagesPerSheet > 0)
+      ? Math.ceil(innerPages / pagesPerSheet) : 0
+    const coverForms = hascover ? 1 : 0
+    const plateCost = printMethod === 'offset' && (innerForms + coverForms) > 0
+      ? (PLATE_COUNT[colorOption] || 4) * 3850 * (innerForms + coverForms)
+      : 0
+    // Даралтын зардал: impression тоогоор (4+4 = 2 дамжуулалт/хуудас)
+    const impressions = innerSheets * sidesPerSheet + coverSheets * 2
+    const pressureTotal = impressions > 0 ? pressureCost * Math.ceil(impressions / 1000) : 0
     const postTotal = Object.values(postProc).reduce((s,v) => s+(v||0), 0)
 
     const subtotal = setupCost + totalPaperCost + plateCost + pressureTotal + postTotal
