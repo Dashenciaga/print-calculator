@@ -92,6 +92,8 @@ export default function ProCalculator() {
   const [activeSection, setActiveSection] = useState('calc')
   const [history, setHistory] = useState([])
   const [saving, setSaving]   = useState(false)
+  const [saveModal, setSaveModal] = useState(false)
+  const [calcName,  setCalcName]  = useState('')
 
   const [productType,  setProductType]  = useState('brochure')
   const [printMethod,  setPrintMethod]  = useState('offset')
@@ -192,11 +194,16 @@ export default function ProCalculator() {
 
   async function saveCalc() {
     if (!user) return
+    const name = calcName.trim() ||
+      `${PRODUCT_TYPES[productType]?.label} — ${new Date().toLocaleDateString('mn-MN')}`
     setSaving(true)
+    setSaveModal(false)
+    setCalcName('')
     try {
       const supabase = createClient()
       await supabase.from('calculations').insert({
         user_id:    user.id,
+        name,
         paper_size: paperSize,
         paper_w:    result.pw,
         paper_h:    result.ph,
@@ -468,8 +475,8 @@ export default function ProCalculator() {
                 <div key={h.id} className="hist-item" style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'14px 16px',marginBottom:10,transition:'border-color .15s',cursor:'default'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
                     <div>
-                      <div style={{fontSize:13,fontWeight:700,color:C.text}}>{h.paper_size} / {h.material_w}×{h.material_h}мм</div>
-                      <div style={{fontSize:11,color:C.textDim,marginTop:3}}>{new Date(h.created_at).toLocaleDateString('mn-MN')}</div>
+                      <div style={{fontSize:13,fontWeight:700,color:C.text}}>{h.name || `${h.paper_size} / ${h.material_w}×${h.material_h}мм`}</div>
+                      <div style={{fontSize:11,color:C.textDim,marginTop:3}}>{h.paper_size} · {new Date(h.created_at).toLocaleDateString('mn-MN')}</div>
                     </div>
                     <span style={{fontSize:16,fontWeight:800,color:C.accent}}>₮{h.total?.toLocaleString()}</span>
                   </div>
@@ -785,7 +792,7 @@ export default function ProCalculator() {
                   </svg>
                   PDF үнийн санал
                 </button>
-                <button onClick={saveCalc} disabled={saving} style={{
+                <button onClick={() => { setCalcName(''); setSaveModal(true) }} disabled={saving} style={{
                   padding:'13px',background:C.accent,color:'white',border:'none',
                   borderRadius:10,fontSize:13,fontWeight:700,cursor:saving?'not-allowed':'pointer',
                   boxShadow:`0 4px 20px ${C.accentGlow}`,opacity:saving?0.7:1,
@@ -803,6 +810,34 @@ export default function ProCalculator() {
           </div>
         )}
       </div>
+
+      {/* ── SAVE MODAL ── */}
+      {saveModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}
+          onClick={e => e.target===e.currentTarget && setSaveModal(false)}>
+          <div style={{background:'#fff',borderRadius:16,padding:'24px',width:340,boxShadow:'0 24px 60px rgba(0,0,0,0.18)'}}>
+            <div style={{fontSize:16,fontWeight:800,color:C.text,marginBottom:4}}>Тооцоо хадгалах</div>
+            <div style={{fontSize:12,color:C.textMid,marginBottom:18}}>Тооцоонд нэр өгнө үү</div>
+            <label style={lbl}>Тооцооны нэр</label>
+            <input
+              autoFocus
+              style={{...inp,marginBottom:20}}
+              placeholder={`${PRODUCT_TYPES[productType]?.label} — ${new Date().toLocaleDateString('mn-MN')}`}
+              value={calcName}
+              onChange={e => setCalcName(e.target.value)}
+              onKeyDown={e => e.key==='Enter' && saveCalc()}
+            />
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={() => setSaveModal(false)} style={{flex:1,padding:'11px',background:C.bg,color:C.textMid,border:`1.5px solid ${C.border}`,borderRadius:9,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                Цуцлах
+              </button>
+              <button onClick={saveCalc} style={{flex:1,padding:'11px',background:C.accent,color:'white',border:'none',borderRadius:9,fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:`0 4px 16px ${C.accentGlow}`}}>
+                Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
