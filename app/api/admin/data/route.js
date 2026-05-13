@@ -24,7 +24,7 @@ async function getRequestUser() {
 export async function GET() {
   try {
     const user = await getRequestUser()
-    if (!user || user.email !== process.env.ADMIN_EMAIL) {
+    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
       return NextResponse.json({ error: 'Хандах эрхгүй' }, { status: 403 })
     }
 

@@ -58,7 +58,7 @@ export default function AdminPage() {
       const d = await r.json()
       if (d.error) {
         if (r.status === 403) {
-          router.push('/')
+          router.push('/dashboard')
           return
         }
         setError(d.error)

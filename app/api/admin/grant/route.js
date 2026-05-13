@@ -12,7 +12,7 @@ export async function POST(request) {
       { cookies: { getAll: () => cookieStore.getAll() } }
     )
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user || user.email !== process.env.ADMIN_EMAIL) {
+    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
       return NextResponse.json({ error: 'Хандах эрхгүй' }, { status: 403 })
     }
 
