@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 
 // ── Бүтээгдэхүүний төрлүүд (Excel sheet-үүдийн логик) ─────────
 const PRODUCT_TYPES = {
@@ -90,6 +91,7 @@ const sectionTitle = {
 }
 
 export default function ProCalculator() {
+  const router = useRouter()
   const [productType, setProductType] = useState('brochure')
   const [printMethod, setPrintMethod] = useState('offset')
   const [qty, setQty] = useState(500)
@@ -237,16 +239,22 @@ export default function ProCalculator() {
 
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 32, height: 32, background: C.accent, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 16px ${C.accentGlow}` }}>
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
-                <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
-              </svg>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 32, height: 32, background: C.accent, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 16px ${C.accentGlow}` }}>
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
+                  <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.text, letterSpacing: '-.3px' }}>Pro Тооцоолол</div>
+                <div style={{ fontSize: 10, color: C.textDim }}>Нарийн хэвлэлийн зардал</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: C.text, letterSpacing: '-.3px' }}>Pro Тооцоолол</div>
-              <div style={{ fontSize: 10, color: C.textDim }}>Нарийн хэвлэлийн зардал</div>
-            </div>
+            <button onClick={() => router.push('/dashboard')} style={{ padding: '6px 11px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, color: C.textMid, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              Энгийн харах
+            </button>
           </div>
         </div>
 

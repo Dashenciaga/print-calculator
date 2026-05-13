@@ -245,7 +245,7 @@ export default function Home() {
         { text: 'Хязгааргүй хадгалалт', ok: true },
       ],
       cta: 'Жилийн эрх авах',
-      ctaAction: () => openSheet(true),
+      ctaAction: () => openSheet(false),
     },
   ]
 

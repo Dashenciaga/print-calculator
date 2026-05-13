@@ -242,6 +242,12 @@ export default function Dashboard() {
           </svg>
           Профайл
         </button>
+        <div style={{margin:'12px 12px 8px'}}>
+          <button onClick={()=>router.push('/dashboard/pro')} style={{width:'100%',padding:'9px 12px',background:'linear-gradient(135deg,#4f46e5,#7c3aed)',border:'none',borderRadius:8,color:'white',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:7}}>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Pro хувилбар харах
+          </button>
+        </div>
         <div style={S.sbSpacer}/>
         <div style={S.sbUser}>
           <div style={S.sbAvatar}>
