@@ -123,7 +123,7 @@ export default function Profile() {
     }
     setLoading(false)
     setSaved(true)
-    setTimeout(() => { setSaved(false); router.push('/dashboard') }, 1500)
+    setTimeout(() => { setSaved(false); router.push('/dashboard/pro') }, 1500)
   }
 
   const s = {
@@ -176,7 +176,7 @@ export default function Profile() {
           </div>
           <span style={s.tbName}>PrintCalc Pro</span>
         </div>
-        <button style={s.tbBack} onClick={() => router.push('/dashboard')}>← Буцах</button>
+        <button style={s.tbBack} onClick={() => router.push('/dashboard/pro')}>← Буцах</button>
       </div>
 
       <div style={s.content}>
@@ -308,7 +308,7 @@ export default function Profile() {
             {saved ? '✓ Хадгалагдлаа' : loading ? 'Хадгалж байна...' : 'Хадгалах'}
           </button>
           {isNew && (
-            <button type="button" style={s.skipBtn} onClick={() => router.push('/dashboard')}>
+            <button type="button" style={s.skipBtn} onClick={() => router.push('/dashboard/pro')}>
               Дараа оруулна → алгасах
             </button>
           )}

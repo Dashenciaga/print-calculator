@@ -30,7 +30,7 @@ export default function Home() {
           .eq('user_id', user.id)
           .single()
         if (prof?.company_name) {
-          router.push('/dashboard')
+          router.push('/dashboard/pro')
         } else {
           router.push('/profile')
         }
@@ -140,7 +140,7 @@ export default function Home() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
       else if (data.user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) router.push('/admin')
-      else router.push('/dashboard')
+      else router.push('/dashboard/pro')
     }
     setLoading(false)
   }

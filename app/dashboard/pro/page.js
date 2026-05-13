@@ -432,12 +432,6 @@ export default function ProCalculator() {
           </svg>
           Профайл
         </button>
-        <button className="sb-item" onClick={() => router.push('/dashboard')} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 16px',fontSize:12,color:C.textMid,cursor:'pointer',border:'none',background:'none',width:'100%',textAlign:'left',transition:'all .15s'}}>
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          Энгийн хувилбар
-        </button>
 
         <div style={{flex:1}}/>
 
