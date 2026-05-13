@@ -20,6 +20,10 @@ export default function Home() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        if (user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+          router.push('/admin')
+          return
+        }
         const { data: prof } = await supabase
           .from('profiles')
           .select('company_name')
@@ -133,8 +137,9 @@ export default function Home() {
       if (error) setError(error.message)
       else setError('И-мэйлээ шалгаад баталгаажуулаарай!')
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
+      else if (data.user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) router.push('/admin')
       else router.push('/dashboard')
     }
     setLoading(false)
