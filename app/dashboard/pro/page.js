@@ -37,6 +37,16 @@ const PAPER_PRICES = {
   200:1200, 250:1500, 300:1900,
 }
 
+// Цаасны зузаан мм/хуудас (жин → зузаан)
+const PAPER_THICKNESS = {
+  48:.05, 70:.07, 80:.09, 100:.11, 105:.12,
+  115:.13, 120:.14, 128:.14, 150:.17, 157:.18,
+  200:.22, 250:.28, 300:.33,
+}
+
+// Офсет хавтангийн тоо өнгөнөөс хамааран
+const PLATE_COUNT = { '1+0':1, '1+1':2, '4+0':4, '4+4':8 }
+
 const POST_PROCESS = [
   { id:'coating', label:'Бүрэлт (лакдалт)', defaultCost:40000 },
   { id:'tigel',   label:'Тигель (хайчлах)', defaultCost:20000 },
@@ -135,8 +145,16 @@ export default function ProCalculator() {
       newspaper:45000, book:28000, blank:-8000, sticker:8000,
       namecard:0, packaging:25000,
     }
-    return (base[printMethod]?.[colorOption] ?? 50000) + (adj[productType] ?? 0)
-  }, [printMethod, colorOption, productType])
+    const baseCost = (base[printMethod]?.[colorOption] ?? 50000) + (adj[productType] ?? 0)
+    // Олон нүүрт бүтээгдэхүүн: 4 нүүр тутам нэмэлт хавтан хийгдэнэ
+    const isMultiPage = ['magazine','book','newspaper','calendar'].includes(productType)
+    if (isMultiPage && pages > 4) {
+      const extraForms = Math.floor((pages - 4) / 4)
+      const perFormCost = printMethod === 'offset' ? 15000 : 3000
+      return baseCost + extraForms * perFormCost
+    }
+    return baseCost
+  }, [printMethod, colorOption, productType, pages])
 
   // Даралтын үнэ автомат тооцоо
   const autoPressureCost = useMemo(() => {
@@ -301,22 +319,27 @@ export default function ProCalculator() {
     const perSheet = cols * rows
 
     const innerPages = hascover ? Math.max(0, pages-4) : pages
-    const colorSides = colorOption.startsWith('4') ? 4 : 1
     const sidesPerSheet = colorOption.endsWith('+4') || colorOption.endsWith('+1') ? 2 : 1
     const pagesPerSheet = perSheet * sidesPerSheet
     const innerSheets = innerPages > 0 && pagesPerSheet > 0
       ? Math.ceil(innerPages/pagesPerSheet) * qty : 0
+    // Нуруугийн өргөн: хуудасны тоо × цаасны зузаан (мм)
+    const spineWidth = hascover
+      ? Math.max(2, Math.round((innerPages / 2) * (PAPER_THICKNESS[paperWeight] || 0.1)))
+      : 0
     const coverSheets = hascover
       ? Math.ceil(qty / Math.max(1,
-          Math.floor((usableW+gapMm)/((pw*2+5)+gapMm)) *
+          Math.floor((usableW+gapMm)/((pw*2+spineWidth)+gapMm)) *
           Math.floor((usableH+gapMm)/(ph+gapMm)))) : 0
     const totalSheets = innerSheets + coverSheets
 
     const innerPaperPrice = PAPER_PRICES[paperWeight] || 950
     const coverPaperPrice = PAPER_PRICES[coverWeight] || 1500
     const totalPaperCost = innerSheets*innerPaperPrice + coverSheets*coverPaperPrice
-    const plateCost = printMethod === 'offset' ? colorSides*3850 : 0
-    const pressureTotal = pressureCost * Math.ceil(totalSheets/1000) || pressureCost
+    // Хавтангийн тоо: 1+1→2, 4+4→8 (хоёр талыг тооцно)
+    const plateCost = printMethod === 'offset' ? (PLATE_COUNT[colorOption] || 4) * 3850 : 0
+    // Даралтын зардал: хуудас 0 бол 0
+    const pressureTotal = totalSheets > 0 ? pressureCost * Math.ceil(totalSheets/1000) : 0
     const postTotal = Object.values(postProc).reduce((s,v) => s+(v||0), 0)
 
     const subtotal = setupCost + totalPaperCost + plateCost + pressureTotal + postTotal
@@ -330,7 +353,7 @@ export default function ProCalculator() {
 
     return {
       pw, ph, cols, rows, perSheet, pagesPerSheet,
-      innerSheets, coverSheets, totalSheets,
+      innerSheets, coverSheets, totalSheets, spineWidth,
       totalPaperCost, plateCost, pressureTotal, postTotal,
       setupCost, overheadAmt, vatAmt, total, unitCost, efficiency,
       breakdown: [
@@ -753,6 +776,7 @@ export default function ProCalculator() {
                       ['А0 хуудасны багтаамж',  `${result.cols}×${result.rows} = ${result.perSheet}ш`],
                       ['Дотоод хуудас (А0)',     `${result.innerSheets.toLocaleString()}`],
                       ['Хавтасны хуудас (А0)',   hascover ? `${result.coverSheets.toLocaleString()}` : '—'],
+                      ['Номын нуруу',            hascover ? `${result.spineWidth}мм` : '—'],
                       ['Нийт А0 хуудас',         `${result.totalSheets.toLocaleString()}`],
                       ['Нийт цаасны зардал',     `₮${fmt(result.totalPaperCost)}`],
                       ['Офсет хавтан',           printMethod==='offset' ? `₮${fmt(result.plateCost)}` : '—'],
