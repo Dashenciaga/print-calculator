@@ -160,7 +160,6 @@ export default function Profile() {
     { id: 'company', label: 'Компани' },
     { id: 'contact', label: 'Холбоо барих' },
     { id: 'finance', label: 'Санхүү' },
-    { id: 'defaults', label: 'Анхны утга' },
   ]
 
   const focusStyle = e => e.target.style.borderColor = '#4f46e5'
@@ -304,34 +303,6 @@ export default function Profile() {
             </div>
           )}
 
-          {activeSection === 'defaults' && (
-            <div style={s.card}>
-              <div style={s.cardTitle}>Тооцооны анхны утгууд</div>
-              <div style={{ ...s.grid2, marginBottom: 12 }}>
-                <div style={s.field}>
-                  <label style={s.label}>НӨАТ (%)</label>
-                  <input style={s.input} type="text" inputMode="numeric" value={form.default_vat}
-                    onFocus={e => { e.target.select(); focusStyle(e) }} onBlur={blurStyle}
-                    onChange={e => set('default_vat', +e.target.value || 0)} />
-                  <span style={s.hint}>Тооцоо нээхэд автоматаар орно</span>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Нэмэгдэл (%)</label>
-                  <input style={s.input} type="text" inputMode="numeric" value={form.default_overhead}
-                    onFocus={e => { e.target.select(); focusStyle(e) }} onBlur={blurStyle}
-                    onChange={e => set('default_overhead', +e.target.value || 0)} />
-                  <span style={s.hint}>Тооцоо нээхэд автоматаар орно</span>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Хуудасны үнэ (₮)</label>
-                  <input style={s.input} type="text" inputMode="numeric" value={form.default_print_cost}
-                    onFocus={e => { e.target.select(); focusStyle(e) }} onBlur={blurStyle}
-                    onChange={e => set('default_print_cost', +e.target.value || 0)} />
-                  <span style={s.hint}>Тооцоо нээхэд автоматаар орно</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           <button type="submit" style={s.saveBtn} disabled={loading}>
             {saved ? '✓ Хадгалагдлаа' : loading ? 'Хадгалж байна...' : 'Хадгалах'}
