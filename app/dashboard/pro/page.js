@@ -395,20 +395,20 @@ export default function ProCalculator() {
       <div style={{width:210,background:C.sidebar,display:'flex',flexDirection:'column',flexShrink:0,position:'fixed',top:0,left:0,bottom:0,zIndex:10,borderRight:`1.5px solid ${C.border}`,boxShadow:'2px 0 12px rgba(0,0,0,0.04)'}}>
         {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:9,padding:'18px 16px 20px'}}>
-          <div style={{width:32,height:32,borderRadius:8,flexShrink:0,overflow:'hidden',border:`1px solid ${C.border}`,background:C.bg,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {profile?.logo_url
-              ? <img src={profile.logo_url} alt="logo" style={{width:32,height:32,objectFit:'cover'}}/>
-              : <div style={{width:32,height:32,background:C.accent,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 12px ${C.accentGlow}`}}>
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
-                    <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
-                  </svg>
-                </div>
-            }
-          </div>
+          <svg width="32" height="32" viewBox="0 0 75 80" fill="none" style={{flexShrink:0}}>
+            <rect x="8"  y="4"  width="7" height="46" rx="3.5" fill="#4f46e5" opacity="0.85"/>
+            <rect x="8"  y="58" width="7" height="10" rx="3.5" fill="#4f46e5" opacity="0.35"/>
+            <rect x="21" y="4"  width="7" height="22" rx="3.5" fill="#4f46e5" opacity="0.6"/>
+            <rect x="21" y="34" width="7" height="42" rx="3.5" fill="#4f46e5" opacity="0.85"/>
+            <rect x="34" y="4"  width="7" height="58" rx="3.5" fill="#818cf8" opacity="0.9"/>
+            <rect x="34" y="70" width="7" height="6"  rx="3.5" fill="#818cf8" opacity="0.3"/>
+            <rect x="47" y="14" width="7" height="10" rx="3.5" fill="#4f46e5" opacity="0.4"/>
+            <rect x="47" y="32" width="7" height="34" rx="3.5" fill="#4f46e5" opacity="0.75"/>
+            <rect x="60" y="4"  width="7" height="50" rx="3.5" fill="#4f46e5" opacity="0.55"/>
+            <rect x="60" y="62" width="7" height="14" rx="3.5" fill="#4f46e5" opacity="0.3"/>
+          </svg>
           <div>
-            <div style={{color:C.text,fontSize:13,fontWeight:700,letterSpacing:'-.2px'}}>
-              {profile?.company_name || 'PrintCalc'}
-            </div>
+            <div style={{color:C.text,fontSize:13,fontWeight:700,letterSpacing:'-.2px'}}>PrintCalc</div>
             <div style={{fontSize:9,color:C.accent,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase'}}>Pro</div>
           </div>
         </div>
