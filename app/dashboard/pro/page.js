@@ -630,6 +630,58 @@ export default function ProCalculator() {
                   ))}
                 </div>
 
+                {/* Size */}
+                <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
+                  padding:'20px 22px',marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:'.08em',
+                    textTransform:'uppercase',marginBottom:12}}>Бүтээгдэхүүний хэмжээ</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+                    <div>
+                      <label style={lbl}>Цаасны хэмжээ</label>
+                      <select style={inp} value={paperSize} onChange={e => setPaperSize(e.target.value)}>
+                        {Object.keys(PAPER_SIZES).map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Чиглэл</label>
+                      <div style={{display:'flex',borderRadius:8,border:`1.5px solid ${C.border}`,overflow:'hidden'}}>
+                        {[['portrait','↕ Босоо'],['landscape','↔ Хэвтээ']].map(([o,l]) => (
+                          <button key={o} onClick={() => setOrient(o)} style={{
+                            flex:1,padding:'9px 4px',fontSize:11,fontWeight:600,border:'none',
+                            background:orient===o?C.accentGlow:'#fff',
+                            color:orient===o?C.accent:C.textMid,cursor:'pointer',
+                          }}>{l}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {paperSize === 'Дурын' && (
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+                      <div>
+                        <label style={lbl}>Өргөн (мм)</label>
+                        <input style={inp} type="number" value={customW}
+                          onFocus={e => e.target.select()} onChange={e => setCustomW(+e.target.value||0)}/>
+                      </div>
+                      <div>
+                        <label style={lbl}>Өндөр (мм)</label>
+                        <input style={inp} type="number" value={customH}
+                          onFocus={e => e.target.select()} onChange={e => setCustomH(+e.target.value||0)}/>
+                      </div>
+                    </div>
+                  )}
+                  {result.perSheet > 0 && (
+                    <div style={{background:C.accentGlow,borderRadius:8,padding:'8px 12px',
+                      display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <span style={{fontSize:11,color:C.accent,fontWeight:600}}>
+                        Нэг мастер хуудаст багтах
+                      </span>
+                      <span style={{fontSize:14,fontWeight:800,color:C.accent}}>
+                        {result.cols}×{result.rows} = {result.perSheet} ш
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Quantity */}
                 <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
                   padding:'20px 22px',marginBottom:14}}>
