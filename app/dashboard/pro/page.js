@@ -66,6 +66,7 @@ const COLOR_OPTIONS = [
 ]
 
 const MASTER_W = 889, MASTER_H = 1194
+const A0_AREA  = 841 * 1189   // 1,000,949 мм² — цаасны үнийн суурь
 
 const C = {
   bg:'#f4f6fb', surface:'#ffffff', surfaceHover:'#f8faff',
@@ -335,7 +336,9 @@ export default function ProCalculator() {
 
     const innerPaperPrice = PAPER_PRICES[paperWeight] || 950
     const coverPaperPrice = PAPER_PRICES[coverWeight] || 1500
-    const totalPaperCost = innerSheets*innerPaperPrice + coverSheets*coverPaperPrice
+    const masterArea = MASTER_W * MASTER_H
+    const totalPaperCost = (innerSheets * masterArea / A0_AREA) * innerPaperPrice
+                         + (coverSheets * masterArea / A0_AREA) * coverPaperPrice
     // Хавтангийн тоо: 1+1→2, 4+4→8 (хоёр талыг тооцно)
     const plateCost = printMethod === 'offset' ? (PLATE_COUNT[colorOption] || 4) * 3850 : 0
     // Даралтын зардал: хуудас 0 бол 0
@@ -599,7 +602,7 @@ export default function ProCalculator() {
                   <div>
                     <label style={lbl}>Цаасны жин (гр/м²)</label>
                     <select style={inp} value={paperWeight} onChange={e => setPaperWeight(+e.target.value)}>
-                      {PAPER_WEIGHTS.map(w => <option key={w} value={w}>{w} гр/м² — ₮{PAPER_PRICES[w]}</option>)}
+                      {PAPER_WEIGHTS.map(w => <option key={w} value={w}>{w} гр/м² — A0 ₮{PAPER_PRICES[w]}</option>)}
                     </select>
                   </div>
                   <div>
@@ -621,7 +624,7 @@ export default function ProCalculator() {
                   <div style={{marginTop:10}}>
                     <label style={lbl}>Хавтасны жин (гр/м²)</label>
                     <select style={inp} value={coverWeight} onChange={e => setCoverWeight(+e.target.value)}>
-                      {PAPER_WEIGHTS.map(w => <option key={w} value={w}>{w} гр/м² — ₮{PAPER_PRICES[w]}</option>)}
+                      {PAPER_WEIGHTS.map(w => <option key={w} value={w}>{w} гр/м² — A0 ₮{PAPER_PRICES[w]}</option>)}
                     </select>
                   </div>
                 )}
