@@ -244,7 +244,7 @@ export default function ProCalculator() {
     const win = window.open('', '_blank')
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="utf-8">
-      <title>Үнийн санал — ${profile?.company_name || 'PrintCalc Pro'}</title>
+      <title>Үнийн санал — ${profile?.company_name || 'PrintCalc'}</title>
       <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:system-ui,sans-serif;color:#1a1f36;padding:40px;font-size:13px}
@@ -297,7 +297,7 @@ export default function ProCalculator() {
           return `<div class="pc"><div class="pl">${m}% ашигтай</div><div class="pv">₮${Math.round(price).toLocaleString()}</div><div class="pu">нэгж: ₮${unit.toFixed(1)}</div></div>`
         }).join('')}
       </div>
-      <div class="ft">PrintCalc Pro · ${new Date().getFullYear()} · Хэвлэлийн зардлын тооцоолуур</div>
+      <div class="ft">PrintCalc · ${new Date().getFullYear()} · Хэвлэлийн зардлын тооцоолуур</div>
       <script>window.onload=function(){window.print()}<\/script>
     </body></html>`)
     win.document.close()
@@ -426,7 +426,6 @@ export default function ProCalculator() {
           </svg>
           <div>
             <div style={{color:C.text,fontSize:13,fontWeight:700,letterSpacing:'-.2px'}}>PrintCalc</div>
-            <div style={{fontSize:9,color:C.accent,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase'}}>Pro</div>
           </div>
         </div>
 

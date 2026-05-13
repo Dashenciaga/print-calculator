@@ -25,8 +25,6 @@ export default function AdminPage() {
   const [tab, setTab]           = useState('users')   // users | calcs | feedbacks
   const [feedbacks, setFeedbacks] = useState([])
   const [fbLoading, setFbLoading] = useState(false)
-  const [acting, setActing]     = useState({})
-  const [planFilter, setPlanFilter] = useState('all') // all | pro | free
 
   useEffect(() => { fetchData() }, [])
 
@@ -72,19 +70,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleGrant(userId, action) {
-    setActing(a => ({ ...a, [userId]: true }))
-    try {
-      await fetch('/api/admin/grant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_user_id: userId, action }),
-      })
-      await fetchData()
-    } finally {
-      setActing(a => ({ ...a, [userId]: false }))
-    }
-  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -94,12 +79,9 @@ export default function AdminPage() {
 
   const filteredUsers = (data?.users || []).filter(u => {
     const q = search.toLowerCase()
-    const matchSearch = !q ||
+    return !q ||
       u.email?.toLowerCase().includes(q) ||
       u.profile?.company_name?.toLowerCase().includes(q)
-    const plan = u.subscription?.plan || 'free'
-    const matchPlan = planFilter === 'all' || plan === planFilter
-    return matchSearch && matchPlan
   })
 
   const fmt = n => Math.round(n).toLocaleString()
@@ -231,12 +213,11 @@ export default function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
           {[
-            { label: 'Нийт хэрэглэгч',   value: data?.stats.total_users,  color: C.accent,   icon: '👥' },
-            { label: 'Pro эрхтэй',        value: data?.stats.pro_users,    color: C.purple,   icon: '⭐' },
-            { label: 'Нийт тооцоо',       value: data?.stats.total_calcs,  color: C.success,  icon: '📊' },
-            { label: 'Нийт орлого (₮)',   value: `₮${fmt(data?.stats.revenue || 0)}`, color: C.warn, icon: '💰', raw: true },
+            { label: 'Нийт хэрэглэгч',  value: data?.stats.total_users, color: C.accent,  icon: '👥' },
+            { label: 'Нийт тооцоо',     value: data?.stats.total_calcs, color: C.success, icon: '📊' },
+            { label: 'Өнөөдрийн тооцоо', value: data?.stats.today_calcs, color: C.purple,  icon: '📈' },
           ].map(s => (
             <div key={s.label} style={{ ...card, marginBottom: 0, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: s.color }}/>
@@ -260,16 +241,7 @@ export default function AdminPage() {
                 style={{ flex: 1, minWidth: 200, padding: '8px 12px', fontSize: 13, border: `1.5px solid ${C.border}`,
                   borderRadius: 8, background: '#fff', color: C.text }}
               />
-              <div style={{ display: 'flex', background: C.bg, borderRadius: 8, border: `1.5px solid ${C.border}`, overflow: 'hidden' }}>
-                {[['all','Бүгд'],['pro','Pro'],['free','Энгийн']].map(([v,l]) => (
-                  <button key={v} onClick={() => setPlanFilter(v)} style={{
-                    padding: '8px 14px', fontSize: 12, fontWeight: 600, border: 'none',
-                    background: planFilter === v ? C.accentGlow : 'none',
-                    color: planFilter === v ? C.accent : C.textMid, cursor: 'pointer',
-                  }}>{l}</button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMid }}>
+<div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMid }}>
                 <span style={{ fontWeight: 600, color: C.text }}>{filteredUsers.length}</span> хэрэглэгч
               </div>
             </div>
@@ -279,7 +251,7 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: `2px solid ${C.border}` }}>
-                    {['Компани', 'Имэйл', 'Эрх', 'Тооцоо', 'Бүртгэсэн', 'Дуусах', 'Үйлдэл'].map(h => (
+                    {['Компани', 'Имэйл', 'Тооцоо', 'Бүртгэсэн'].map(h => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11,
                         fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.05em' }}>
                         {h}
@@ -289,8 +261,6 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {filteredUsers.map(u => {
-                    const isPro = u.subscription?.plan === 'pro'
-                    const isPending = u.subscription?.plan === 'pending'
                     return (
                       <tr key={u.id} className="row-hover" style={{ borderBottom: `1px solid ${C.border}` }}>
                         <td style={{ padding: '10px 12px' }}>
@@ -309,58 +279,18 @@ export default function AdminPage() {
                           </div>
                         </td>
                         <td style={{ padding: '10px 12px', color: C.textMid, fontSize: 12 }}>{u.email}</td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
-                            background: isPro ? 'rgba(124,58,237,0.1)' : isPending ? 'rgba(245,158,11,0.1)' : C.bg,
-                            color: isPro ? C.purple : isPending ? C.warn : C.textDim,
-                            border: `1px solid ${isPro ? 'rgba(124,58,237,0.25)' : isPending ? 'rgba(245,158,11,0.3)' : C.border}`,
-                          }}>
-                            {isPro ? '⭐ Pro' : isPending ? '⏳ Хүлээгдэж' : 'Энгийн'}
-                          </span>
-                        </td>
                         <td style={{ padding: '10px 12px', color: C.text, fontWeight: 600, textAlign: 'center' }}>
                           {u.calc_count}
                         </td>
                         <td style={{ padding: '10px 12px', color: C.textMid, fontSize: 12 }}>
                           {new Date(u.created_at).toLocaleDateString('mn-MN')}
                         </td>
-                        <td style={{ padding: '10px 12px', color: C.textMid, fontSize: 12 }}>
-                          {u.subscription?.expires_at
-                            ? new Date(u.subscription.expires_at).toLocaleDateString('mn-MN')
-                            : '—'}
-                        </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {!isPro ? (
-                              <button
-                                onClick={() => handleGrant(u.id, 'grant')}
-                                disabled={acting[u.id]}
-                                style={{ padding: '5px 12px', background: 'rgba(124,58,237,0.08)',
-                                  color: C.purple, border: `1px solid rgba(124,58,237,0.25)`,
-                                  borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                  opacity: acting[u.id] ? 0.5 : 1 }}>
-                                {acting[u.id] ? '...' : '⭐ Pro олгох'}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleGrant(u.id, 'revoke')}
-                                disabled={acting[u.id]}
-                                style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.07)',
-                                  color: C.danger, border: `1px solid rgba(239,68,68,0.2)`,
-                                  borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                  opacity: acting[u.id] ? 0.5 : 1 }}>
-                                {acting[u.id] ? '...' : 'Цуцлах'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
                       </tr>
                     )
                   })}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: C.textDim, fontSize: 13 }}>
+                      <td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: C.textDim, fontSize: 13 }}>
                         Хэрэглэгч олдсонгүй
                       </td>
                     </tr>
