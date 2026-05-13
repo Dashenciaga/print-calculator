@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import PaymentModal from '@/app/components/PaymentModal'
+import FeedbackButton from '@/app/components/FeedbackButton'
 
 const PRODUCT_TYPES = {
   poster:    { label: 'Постер',            icon: '🖼️' },
@@ -829,6 +830,8 @@ export default function ProCalculator() {
           </div>
         )}
       </div>
+
+      <FeedbackButton />
 
       {/* ── PAYMENT MODAL ── */}
       {showPayment && (

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import FeedbackButton from '@/app/components/FeedbackButton'
 
 const PAPER_SIZES = {
   A4: [210, 297], A3: [297, 420], A5: [148, 210],
@@ -439,6 +440,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      <FeedbackButton />
     </div>
   )
 }

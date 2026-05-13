@@ -22,11 +22,33 @@ export default function AdminPage() {
   const [data, setData]         = useState(null)
   const [error, setError]       = useState('')
   const [search, setSearch]     = useState('')
-  const [tab, setTab]           = useState('users')   // users | calcs
+  const [tab, setTab]           = useState('users')   // users | calcs | feedbacks
+  const [feedbacks, setFeedbacks] = useState([])
+  const [fbLoading, setFbLoading] = useState(false)
   const [acting, setActing]     = useState({})
   const [planFilter, setPlanFilter] = useState('all') // all | pro | free
 
   useEffect(() => { fetchData() }, [])
+
+  async function fetchFeedbacks() {
+    setFbLoading(true)
+    try {
+      const r = await fetch('/api/admin/feedbacks')
+      const d = await r.json()
+      if (!d.error) setFeedbacks(d.feedbacks)
+    } finally { setFbLoading(false) }
+  }
+
+  useEffect(() => { if (tab === 'feedbacks') fetchFeedbacks() }, [tab])
+
+  async function markRead(id) {
+    await fetch('/api/admin/feedbacks', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    setFeedbacks(fb => fb.map(f => f.id === id ? { ...f, is_read: true } : f))
+  }
 
   async function fetchData() {
     setLoading(true)
@@ -135,7 +157,8 @@ export default function AdminPage() {
         <div style={{ padding: '12px 8px', flex: 1 }}>
           {[
             { id: 'users', label: 'Хэрэглэгчид', icon: <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>, icon2: <circle cx="9" cy="7" r="4"/> },
-            { id: 'calcs', label: 'Тооцоонууд',  icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></> },
+            { id: 'calcs',     label: 'Тооцоонууд', icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></> },
+            { id: 'feedbacks', label: 'Саналууд',   icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', width: '100%',
@@ -147,7 +170,13 @@ export default function AdminPage() {
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 {t.icon}{t.icon2}
               </svg>
-              {t.label}
+              <span style={{ flex: 1, textAlign: 'left' }}>{t.label}</span>
+              {t.id === 'feedbacks' && feedbacks.filter(f => !f.is_read).length > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, background: C.danger,
+                  color: 'white', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}>
+                  {feedbacks.filter(f => !f.is_read).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -381,6 +410,79 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* FEEDBACKS TAB */}
+        {tab === 'feedbacks' && (
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
+                Хэрэглэгчдийн санал хүсэлт
+                {feedbacks.filter(f => !f.is_read).length > 0 && (
+                  <span style={{ marginLeft: 8, fontSize: 12, color: C.danger, fontWeight: 600 }}>
+                    ({feedbacks.filter(f => !f.is_read).length} уншаагүй)
+                  </span>
+                )}
+              </div>
+              <button onClick={fetchFeedbacks} style={{ padding: '6px 12px', background: C.bg,
+                border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 12,
+                color: C.textMid, cursor: 'pointer', fontWeight: 600 }}>
+                Шинэчлэх
+              </button>
+            </div>
+
+            {fbLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: C.textMid, fontSize: 13 }}>
+                Ачааллаж байна...
+              </div>
+            ) : feedbacks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: C.textDim, fontSize: 13 }}>
+                Санал хүсэлт байхгүй байна
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {feedbacks.map(f => (
+                  <div key={f.id} style={{
+                    border: `1px solid ${f.is_read ? C.border : '#bfdbfe'}`,
+                    background: f.is_read ? C.surface : '#eff6ff',
+                    borderRadius: 10, padding: '14px 16px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                            {f.company_name || '—'}
+                          </span>
+                          <span style={{ fontSize: 11, color: C.textMid, marginLeft: 8 }}>{f.email || 'Нэвтрээгүй'}</span>
+                        </div>
+                        {!f.is_read && (
+                          <span style={{ fontSize: 10, fontWeight: 700, background: C.accent,
+                            color: 'white', padding: '1px 7px', borderRadius: 10 }}>Шинэ</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {f.rating && (
+                          <span style={{ fontSize: 13 }}>{'⭐'.repeat(f.rating)}</span>
+                        )}
+                        <span style={{ fontSize: 11, color: C.textDim }}>
+                          {new Date(f.created_at).toLocaleDateString('mn-MN')}
+                        </span>
+                        {!f.is_read && (
+                          <button onClick={() => markRead(f.id)} style={{
+                            padding: '4px 10px', background: 'none', border: `1px solid ${C.border}`,
+                            borderRadius: 6, fontSize: 11, color: C.textMid, cursor: 'pointer', fontWeight: 600,
+                          }}>✓ Уншсан</button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {f.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
