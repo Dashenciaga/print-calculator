@@ -635,9 +635,49 @@ export default function ProCalculator() {
                   padding:'20px 22px',marginBottom:14}}>
                   <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:'.08em',
                     textTransform:'uppercase',marginBottom:12}}>Бүтээгдэхүүний хэмжээ</div>
+
+                  {/* Dimension inputs — always visible */}
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
                     <div>
-                      <label style={lbl}>Цаасны хэмжээ</label>
+                      <label style={lbl}>Өргөн (мм)</label>
+                      <input
+                        style={{...inp,
+                          fontWeight:700,fontSize:15,
+                          background: paperSize!=='Дурын' ? C.bg : '#fff',
+                          color: paperSize!=='Дурын' ? C.textMid : C.text,
+                        }}
+                        type="number"
+                        value={paperSize==='Дурын' ? customW : result.pw}
+                        onFocus={e => e.target.select()}
+                        readOnly={paperSize!=='Дурын'}
+                        onChange={e => {
+                          if (paperSize==='Дурын') setCustomW(+e.target.value||0)
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={lbl}>Өндөр (мм)</label>
+                      <input
+                        style={{...inp,
+                          fontWeight:700,fontSize:15,
+                          background: paperSize!=='Дурын' ? C.bg : '#fff',
+                          color: paperSize!=='Дурын' ? C.textMid : C.text,
+                        }}
+                        type="number"
+                        value={paperSize==='Дурын' ? customH : result.ph}
+                        onFocus={e => e.target.select()}
+                        readOnly={paperSize!=='Дурын'}
+                        onChange={e => {
+                          if (paperSize==='Дурын') setCustomH(+e.target.value||0)
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Size preset + orientation */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+                    <div>
+                      <label style={lbl}>Урьдчилсан хэмжээ</label>
                       <select style={inp} value={paperSize} onChange={e => setPaperSize(e.target.value)}>
                         {Object.keys(PAPER_SIZES).map(s => <option key={s}>{s}</option>)}
                       </select>
@@ -655,20 +695,14 @@ export default function ProCalculator() {
                       </div>
                     </div>
                   </div>
-                  {paperSize === 'Дурын' && (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-                      <div>
-                        <label style={lbl}>Өргөн (мм)</label>
-                        <input style={inp} type="number" value={customW}
-                          onFocus={e => e.target.select()} onChange={e => setCustomW(+e.target.value||0)}/>
-                      </div>
-                      <div>
-                        <label style={lbl}>Өндөр (мм)</label>
-                        <input style={inp} type="number" value={customH}
-                          onFocus={e => e.target.select()} onChange={e => setCustomH(+e.target.value||0)}/>
-                      </div>
+
+                  {paperSize!=='Дурын' && (
+                    <div style={{fontSize:11,color:C.textDim,marginBottom:10}}>
+                      💡 Өөр хэмжээ оруулахыг хүсвэл <strong style={{color:C.accent,cursor:'pointer'}}
+                        onClick={() => setPaperSize('Дурын')}>Дурын</strong> сонгоно уу
                     </div>
                   )}
+
                   {result.perSheet > 0 && (
                     <div style={{background:C.accentGlow,borderRadius:8,padding:'8px 12px',
                       display:'flex',alignItems:'center',justifyContent:'space-between'}}>
