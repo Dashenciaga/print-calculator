@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import PaymentModal from '@/app/components/PaymentModal'
 
 const PRODUCT_TYPES = {
   poster:    { label: 'Постер',            icon: '🖼️' },
@@ -91,9 +92,11 @@ export default function ProCalculator() {
   const [profile, setProfile] = useState(null)
   const [activeSection, setActiveSection] = useState('calc')
   const [history, setHistory] = useState([])
-  const [saving, setSaving]   = useState(false)
+  const [saving, setSaving]       = useState(false)
   const [saveModal, setSaveModal] = useState(false)
   const [calcName,  setCalcName]  = useState('')
+  const [subscription, setSubscription] = useState(null)
+  const [showPayment,  setShowPayment]  = useState(false)
 
   const [productType,  setProductType]  = useState('brochure')
   const [printMethod,  setPrintMethod]  = useState('offset')
@@ -174,6 +177,9 @@ export default function ProCalculator() {
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('user_id', user.id).single()
       setProfile(prof)
+      const { data: sub } = await supabase
+        .from('subscriptions').select('*').eq('user_id', user.id).single()
+      setSubscription(sub)
       loadHistory(user.id)
     }
     init()
@@ -454,6 +460,19 @@ export default function ProCalculator() {
 
       {/* ── MAIN ── */}
       <div style={{marginLeft:210,flex:1,display:'flex',flexDirection:'column',minHeight:'100vh'}}>
+
+        {/* Upgrade banner */}
+        {subscription?.plan !== 'pro' && (
+          <div style={{background:'linear-gradient(90deg,#4f7cff,#7c3aed)',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexShrink:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,color:'white'}}>
+              <span style={{fontSize:16}}>⭐</span>
+              <span style={{fontSize:13,fontWeight:600}}>Pro эрх идэвхгүй байна — бүх боломжийг нээхийн тулд эрх аваарай</span>
+            </div>
+            <button onClick={() => setShowPayment(true)} style={{padding:'6px 16px',background:'white',color:'#4f7cff',border:'none',borderRadius:7,fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+              Эрх авах ₮199,000
+            </button>
+          </div>
+        )}
 
         {/* HISTORY TAB */}
         {activeSection === 'history' && (
@@ -810,6 +829,20 @@ export default function ProCalculator() {
           </div>
         )}
       </div>
+
+      {/* ── PAYMENT MODAL ── */}
+      {showPayment && (
+        <PaymentModal
+          onClose={() => setShowPayment(false)}
+          onSuccess={async () => {
+            const supabase = createClient()
+            const { data: sub } = await supabase
+              .from('subscriptions').select('*').eq('user_id', user.id).single()
+            setSubscription(sub)
+            setShowPayment(false)
+          }}
+        />
+      )}
 
       {/* ── SAVE MODAL ── */}
       {saveModal && (
