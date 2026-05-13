@@ -395,13 +395,20 @@ export default function ProCalculator() {
       <div style={{width:210,background:C.sidebar,display:'flex',flexDirection:'column',flexShrink:0,position:'fixed',top:0,left:0,bottom:0,zIndex:10,borderRight:`1.5px solid ${C.border}`,boxShadow:'2px 0 12px rgba(0,0,0,0.04)'}}>
         {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:9,padding:'18px 16px 20px'}}>
-          <div style={{width:28,height:28,background:C.accent,borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 12px ${C.accentGlow}`,flexShrink:0}}>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
-              <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
-            </svg>
+          <div style={{width:32,height:32,borderRadius:8,flexShrink:0,overflow:'hidden',border:`1px solid ${C.border}`,background:C.bg,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {profile?.logo_url
+              ? <img src={profile.logo_url} alt="logo" style={{width:32,height:32,objectFit:'cover'}}/>
+              : <div style={{width:32,height:32,background:C.accent,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 12px ${C.accentGlow}`}}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5">
+                    <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/>
+                  </svg>
+                </div>
+            }
           </div>
           <div>
-            <div style={{color:C.text,fontSize:13,fontWeight:700,letterSpacing:'-.2px'}}>PrintCalc</div>
+            <div style={{color:C.text,fontSize:13,fontWeight:700,letterSpacing:'-.2px'}}>
+              {profile?.company_name || 'PrintCalc'}
+            </div>
             <div style={{fontSize:9,color:C.accent,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase'}}>Pro</div>
           </div>
         </div>
