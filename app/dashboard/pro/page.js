@@ -57,18 +57,18 @@ const COLOR_OPTIONS = [
 const MASTER_W = 889, MASTER_H = 1194
 
 const C = {
-  bg:'#0a0d14', surface:'#111520', surfaceHover:'#171e2e',
-  border:'#1e2840', borderHover:'#2d3f5e',
-  accent:'#4f7cff', accentDim:'#2d52cc', accentGlow:'rgba(79,124,255,0.15)',
-  success:'#1dd4a0', warn:'#f5a623', danger:'#f04060',
-  text:'#dde4f4', textMid:'#7a8cad', textDim:'#3d4d6a',
-  purple:'#a78bfa', teal:'#2dd4bf',
-  sidebar:'#0d1120',
+  bg:'#f4f6fb', surface:'#ffffff', surfaceHover:'#f8faff',
+  border:'#e2e8f3', borderHover:'#c5d0e8',
+  accent:'#4f7cff', accentDim:'#3563e9', accentGlow:'rgba(79,124,255,0.10)',
+  success:'#10b981', warn:'#f59e0b', danger:'#ef4444',
+  text:'#111827', textMid:'#4b5a7a', textDim:'#9aa5bf',
+  purple:'#7c3aed', teal:'#0d9488',
+  sidebar:'#ffffff',
 }
 
 const inp = {
   width:'100%', padding:'8px 11px', fontSize:13, fontWeight:500,
-  border:`1.5px solid ${C.border}`, borderRadius:7, background:C.bg,
+  border:`1.5px solid ${C.border}`, borderRadius:7, background:'#ffffff',
   color:C.text, outline:'none', boxSizing:'border-box', transition:'border-color .15s',
 }
 const lbl = {
@@ -359,12 +359,12 @@ export default function ProCalculator() {
         ::-webkit-scrollbar-thumb{background:${C.border};border-radius:10px}
         .prod-btn:hover{background:${C.surfaceHover}!important;border-color:${C.borderHover}!important}
         .post-btn:hover{border-color:${C.accent}!important}
-        .calc-row:hover td{background:${C.surfaceHover}}
-        .sb-item:hover{color:white!important;background:#1e2840!important}
+        .calc-row:hover td{background:${C.bg}}
+        .sb-item:hover{color:${C.accent}!important;background:${C.accentGlow}!important}
         .hist-item:hover{border-color:${C.borderHover}!important}
         @media(max-width:900px){
           .pro-main{flex-direction:column!important}
-          .pro-left{width:100%!important;border-right:none!important;border-bottom:1px solid ${C.border}}
+          .pro-left{width:100%!important;border-right:none!important;border-bottom:1px solid ${C.border}!important}
           .pro-right{padding:16px!important}
           .metrics-3{grid-template-columns:1fr 1fr!important}
           .two-col{grid-template-columns:1fr!important}
@@ -378,7 +378,7 @@ export default function ProCalculator() {
       `}</style>
 
       {/* ── SIDEBAR ── */}
-      <div style={{width:210,background:C.sidebar,display:'flex',flexDirection:'column',flexShrink:0,position:'fixed',top:0,left:0,bottom:0,zIndex:10,borderRight:`1px solid ${C.border}`}}>
+      <div style={{width:210,background:C.sidebar,display:'flex',flexDirection:'column',flexShrink:0,position:'fixed',top:0,left:0,bottom:0,zIndex:10,borderRight:`1.5px solid ${C.border}`,boxShadow:'2px 0 12px rgba(0,0,0,0.04)'}}>
         {/* Logo */}
         <div style={{display:'flex',alignItems:'center',gap:9,padding:'18px 16px 20px'}}>
           <div style={{width:28,height:28,background:C.accent,borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 12px ${C.accentGlow}`,flexShrink:0}}>
@@ -400,8 +400,8 @@ export default function ProCalculator() {
         ].map(t => (
           <button key={t.id} className="sb-item" onClick={() => setActiveSection(t.id)} style={{
             display:'flex',alignItems:'center',gap:8,padding:'8px 16px',
-            fontSize:12,color:activeSection===t.id ? 'white' : C.textMid,
-            cursor:'pointer',border:'none',background:activeSection===t.id ? '#1e2840' : 'none',
+            fontSize:12,color:activeSection===t.id ? C.accent : C.textMid,
+            cursor:'pointer',border:'none',background:activeSection===t.id ? C.accentGlow : 'none',
             width:'100%',textAlign:'left',transition:'all .15s',borderRadius:0,
           }}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">{t.icon}</svg>
@@ -820,7 +820,7 @@ function LayoutVis({ cols, rows, pW, pH, masterW, masterH, margin, gap }) {
     for (let c=0;c<cols;c++)
       items.push({x:sm+c*(sw+sg), y:sm+r*(sh+sg), n:r*cols+c+1})
   return (
-    <div style={{position:'relative',background:'#05080f',border:`1.5px solid ${C.borderHover}`,borderRadius:6,width:vw,height:vh,flexShrink:0}}>
+    <div style={{position:'relative',background:C.bg,border:`1.5px solid ${C.border}`,borderRadius:6,width:vw,height:vh,flexShrink:0}}>
       <div style={{position:'absolute',left:sm,top:sm,right:sm,bottom:sm,border:`1px dashed ${C.borderHover}`,borderRadius:2,pointerEvents:'none'}}/>
       {items.map(({x,y,n}) => (
         <div key={n} style={{position:'absolute',left:x,top:y,width:sw,height:sh,background:C.accentGlow,border:`0.5px solid ${C.accentDim}`,borderRadius:1,display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.max(5,Math.min(8,sw/3)),color:C.accent,fontWeight:700}}>
