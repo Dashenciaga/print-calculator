@@ -208,35 +208,13 @@ export default function Home() {
 
   const plans = [
     {
-      name: 'Энгийн',
-      price: 'Үнэгүй',
+      name: 'Бүгд үнэгүй',
+      price: '₮0',
       sub: 'Бүртгүүлэхэд л хангалттай',
-      color: '#64748b',
-      bg: 'white',
-      border: '#e2e8f0',
-      btnStyle: { background: 'white', color: '#4f46e5', border: '1.5px solid #4f46e5' },
-      features: [
-        { text: 'Хуудасны байршуулалт тооцоо', ok: true },
-        { text: 'Нэгж өртөг тооцоо', ok: true },
-        { text: 'Үр ашгийн хувь', ok: true },
-        { text: 'Компанийн профайл', ok: true },
-        { text: 'Тооцооны түүх хадгалах', ok: false },
-        { text: 'Нарийн зардлын задаргаа', ok: false },
-        { text: 'PDF үнийн санал үүсгэх', ok: false },
-        { text: 'Тооцоо татаж авах', ok: false },
-        { text: 'Хязгааргүй хадгалалт', ok: false },
-      ],
-      cta: 'Үнэгүй эхлэх',
-      ctaAction: () => openSheet(true),
-    },
-    {
-      name: 'Жилийн эрхт',
-      price: '₮199,000',
-      sub: '/ жил · НӨАТ орсон',
       color: '#4f46e5',
       bg: '#faf5ff',
       border: '#a5b4fc',
-      badge: 'Санал болгох',
+      badge: 'Үнэгүй',
       btnStyle: { background: '#4f46e5', color: 'white', border: 'none' },
       features: [
         { text: 'Хуудасны байршуулалт тооцоо', ok: true },
@@ -246,11 +224,10 @@ export default function Home() {
         { text: 'Тооцооны түүх хадгалах', ok: true },
         { text: 'Нарийн зардлын задаргаа', ok: true },
         { text: 'PDF үнийн санал үүсгэх', ok: true },
-        { text: 'Тооцоо татаж авах', ok: true },
         { text: 'Хязгааргүй хадгалалт', ok: true },
       ],
-      cta: 'Жилийн эрх авах',
-      ctaAction: () => openSheet(false),
+      cta: 'Үнэгүй эхлэх',
+      ctaAction: () => openSheet(true),
     },
   ]
 
@@ -366,7 +343,7 @@ export default function Home() {
         /* PRICING */
         .pricing-section { padding: 80px 24px; background: #f4f5f7; }
         .pricing-inner { max-width: 760px; margin: 0 auto; }
-        .plans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .plans-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 420px; margin: 0 auto; }
         @media (max-width: 600px) { .plans-grid { grid-template-columns: 1fr; } }
         .plan-card {
           border-radius: 14px; padding: 28px 24px;
