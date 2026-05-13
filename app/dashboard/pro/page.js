@@ -107,10 +107,12 @@ export default function ProCalculator() {
   const [orient,       setOrient]       = useState('portrait')
   const [marginMm,     setMarginMm]     = useState(5)
   const [gapMm,        setGapMm]        = useState(3)
-  const [setupCost,    setSetupCost]    = useState(50000)
-  const [pressureCost, setPressureCost] = useState(40000)
-  const [overhead,     setOverhead]     = useState(20)
-  const [vat,          setVat]          = useState(10)
+  const [setupCost,        setSetupCost]        = useState(50000)
+  const [pressureCost,     setPressureCost]     = useState(40000)
+  const [setupManual,      setSetupManual]      = useState(false)
+  const [pressureManual,   setPressureManual]   = useState(false)
+  const [overhead,         setOverhead]         = useState(20)
+  const [vat,              setVat]              = useState(10)
   const [postProc,     setPostProc]     = useState({
     coating:0, tigel:0, lacquer:0, mix:0, fold:0, glue:0, stitch:0, cut:20000,
   })
@@ -118,6 +120,37 @@ export default function ProCalculator() {
     coating:false, tigel:false, lacquer:false, mix:false,
     fold:false, glue:false, stitch:false, cut:true,
   })
+
+  // Ажиллагааны үнэ автомат тооцоо
+  const autoSetupCost = useMemo(() => {
+    const base = {
+      offset:  { '1+0':30000, '1+1':55000, '4+0':90000,  '4+4':150000 },
+      digital: { '1+0':8000,  '1+1':12000, '4+0':12000,  '4+4':18000  },
+    }
+    const adj = {
+      poster:9000, brochure:0, magazine:35000, calendar:18000,
+      newspaper:45000, book:28000, blank:-8000, sticker:8000,
+      namecard:0, packaging:25000,
+    }
+    return (base[printMethod]?.[colorOption] ?? 50000) + (adj[productType] ?? 0)
+  }, [printMethod, colorOption, productType])
+
+  // Даралтын үнэ автомат тооцоо
+  const autoPressureCost = useMemo(() => {
+    if (printMethod === 'digital') return 80000
+    if (paperWeight <= 80)  return 32000
+    if (paperWeight <= 128) return 45000
+    if (paperWeight <= 200) return 58000
+    return 72000
+  }, [printMethod, paperWeight])
+
+  useEffect(() => {
+    if (!setupManual) setSetupCost(autoSetupCost)
+  }, [autoSetupCost, setupManual])
+
+  useEffect(() => {
+    if (!pressureManual) setPressureCost(autoPressureCost)
+  }, [autoPressureCost, pressureManual])
 
   const loadHistory = useCallback(async (uid) => {
     const supabase = createClient()
@@ -614,11 +647,36 @@ export default function ProCalculator() {
               <div style={card}>
                 <div style={sectionTitle}><span>💰</span> Үнийн тохиргоо</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  {/* Ажиллагааны үнэ — auto */}
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+                      <label style={{...lbl,marginBottom:0}}>Ажиллагааны үнэ (₮)</label>
+                      {!setupManual
+                        ? <span style={{fontSize:9,color:C.success,fontWeight:700,letterSpacing:'.06em',background:'rgba(29,212,160,0.1)',padding:'1px 6px',borderRadius:4}}>AUTO</span>
+                        : <button onClick={()=>{setSetupManual(false);setSetupCost(autoSetupCost)}} style={{fontSize:9,color:C.accent,background:'none',border:'none',cursor:'pointer',padding:0,fontWeight:700}}>↺ reset</button>
+                      }
+                    </div>
+                    <input style={{...inp, borderColor: setupManual ? C.warn : C.border}} type="number" value={setupCost}
+                      onFocus={e => e.target.select()}
+                      onChange={e => { setSetupManual(true); setSetupCost(+e.target.value||0) }}/>
+                  </div>
+                  {/* Даралтын үнэ — auto */}
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+                      <label style={{...lbl,marginBottom:0}}>Даралтын үнэ (₮)</label>
+                      {!pressureManual
+                        ? <span style={{fontSize:9,color:C.success,fontWeight:700,letterSpacing:'.06em',background:'rgba(29,212,160,0.1)',padding:'1px 6px',borderRadius:4}}>AUTO</span>
+                        : <button onClick={()=>{setPressureManual(false);setPressureCost(autoPressureCost)}} style={{fontSize:9,color:C.accent,background:'none',border:'none',cursor:'pointer',padding:0,fontWeight:700}}>↺ reset</button>
+                      }
+                    </div>
+                    <input style={{...inp, borderColor: pressureManual ? C.warn : C.border}} type="number" value={pressureCost}
+                      onFocus={e => e.target.select()}
+                      onChange={e => { setPressureManual(true); setPressureCost(+e.target.value||0) }}/>
+                  </div>
+                  {/* Нэмэгдэл, НӨАТ */}
                   {[
-                    ['Ажиллагааны үнэ (₮)', setupCost, setSetupCost],
-                    ['Даралтын үнэ (₮)', pressureCost, setPressureCost],
                     ['Нэмэгдэл (%)', overhead, setOverhead],
-                    ['НӨАТ (%)', vat, setVat],
+                    ['НӨАТ (%)',     vat,      setVat],
                   ].map(([l,v,s]) => (
                     <div key={l}>
                       <label style={lbl}>{l}</label>
