@@ -777,7 +777,7 @@ export default function ProCalculator() {
                     <div style={{background:C.accentGlow,borderRadius:8,padding:'10px 14px',
                       display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <span style={{fontSize:12,color:C.accent,fontWeight:600}}>
-                        Нэг master хуудасны багтаамж
+                        Нэг мастер хуудасны багтаамж
                       </span>
                       <span style={{fontSize:16,fontWeight:800,color:C.accent}}>
                         {result.cols}×{result.rows} = {result.perSheet} ш
@@ -805,7 +805,7 @@ export default function ProCalculator() {
                       </div>
                     </div>
                     <div style={{background:C.bg,borderRadius:8,padding:'10px 12px'}}>
-                      <div style={{fontSize:10,color:C.textDim,fontWeight:600,marginBottom:3}}>Master ≈</div>
+                      <div style={{fontSize:10,color:C.textDim,fontWeight:600,marginBottom:3}}>Мастер ≈</div>
                       <div style={{fontSize:15,fontWeight:800,color:C.text}}>
                         ₮{Math.round((PAPER_PRICES[paperWeight]||950) * MASTER_W * MASTER_H / A0_AREA).toLocaleString()}
                       </div>
@@ -943,11 +943,11 @@ export default function ProCalculator() {
                         {!setupManual
                           ? <span style={{fontSize:9,color:C.success,fontWeight:700,
                               background:'rgba(16,185,129,0.1)',padding:'2px 7px',borderRadius:4}}>
-                              AUTO
+                              АВТО
                             </span>
                           : <button onClick={()=>{setSetupManual(false);setSetupCost(autoSetupCost)}} style={{
                               fontSize:9,color:C.accent,background:'none',border:'none',
-                              cursor:'pointer',padding:0,fontWeight:700}}>↺ reset</button>
+                              cursor:'pointer',padding:0,fontWeight:700}}>↺ болгох</button>
                         }
                       </div>
                       <input
@@ -959,15 +959,15 @@ export default function ProCalculator() {
                     <div>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
                         marginBottom:5}}>
-                        <label style={{...lbl,marginBottom:0}}>1000 impression (₮)</label>
+                        <label style={{...lbl,marginBottom:0}}>1000 дарлалт (₮)</label>
                         {!pressureManual
                           ? <span style={{fontSize:9,color:C.success,fontWeight:700,
                               background:'rgba(16,185,129,0.1)',padding:'2px 7px',borderRadius:4}}>
-                              AUTO
+                              АВТО
                             </span>
                           : <button onClick={()=>{setPressureManual(false);setPressureCost(autoPressureCost)}} style={{
                               fontSize:9,color:C.accent,background:'none',border:'none',
-                              cursor:'pointer',padding:0,fontWeight:700}}>↺ reset</button>
+                              cursor:'pointer',padding:0,fontWeight:700}}>↺ болгох</button>
                         }
                       </div>
                       <input
@@ -990,7 +990,7 @@ export default function ProCalculator() {
                         {PLATE_COUNT[colorOption]} хавтан × ₮3,850 ×&nbsp;
                       </span>
                       <span style={{fontSize:12,fontWeight:700,color:C.accent}}>
-                        {result.innerForms + result.coverForms} form
+                        {result.innerForms + result.coverForms} форм
                       </span>
                       <span style={{fontSize:12,color:C.text}}>=</span>
                       <span style={{fontSize:14,fontWeight:800,color:C.accent}}>
@@ -999,7 +999,7 @@ export default function ProCalculator() {
                       {result.innerForms > 1 && (
                         <span style={{fontSize:10,color:C.textDim,background:C.surface,
                           padding:'2px 8px',borderRadius:4,border:`1px solid ${C.border}`}}>
-                          {pages} нүүр → {result.innerForms} form
+                          {pages} нүүр → {result.innerForms} форм
                         </span>
                       )}
                     </div>
@@ -1201,10 +1201,10 @@ export default function ProCalculator() {
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
                     {[
                       ['Бүтээгдэхүүний хэмжээ', `${result.pw}×${result.ph}мм (${paperSize})`],
-                      ['Master-д багтах',        `${result.cols}×${result.rows} = ${result.perSheet}ш`],
-                      ['Дотоод хуудас',          `${result.innerSheets.toLocaleString()}`],
-                      ['Form тоо',               `${result.innerForms + result.coverForms}`],
-                      ['Impression тоо',         `${(result.innerSheets*(result.sidesPerSheet||1) + result.coverSheets*2).toLocaleString()}`],
+                      ['Мастер-д багтах',         `${result.cols}×${result.rows} = ${result.perSheet}ш`],
+                      ['Дотоод хуудас',           `${result.innerSheets.toLocaleString()}`],
+                      ['Форм тоо',                `${result.innerForms + result.coverForms}`],
+                      ['Дарлалтын тоо',           `${(result.innerSheets*(result.sidesPerSheet||1) + result.coverSheets*2).toLocaleString()}`],
                       ['Нийт хуудас',            `${result.totalSheets.toLocaleString()}`],
                       hascover && ['Номын нуруу', `${result.spineWidth}мм`],
                       hascover && ['Хавтасны хуудас', `${result.coverSheets.toLocaleString()}`],
