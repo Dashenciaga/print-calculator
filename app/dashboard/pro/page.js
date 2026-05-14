@@ -59,7 +59,6 @@ const COLOR_OPTIONS = [
 ]
 
 const MASTER_W = 889, MASTER_H = 1194
-const A0_AREA  = 841 * 1189
 
 const PRODUCT_DEFAULTS = {
   poster:    { pages:1,  printMethod:'offset',  paperSize:'А3',     paperWeight:157, colorOption:'4+0', hascover:false },
@@ -347,19 +346,11 @@ export default function ProCalculator() {
 
     const innerPaperPrice = PAPER_PRICES[paperWeight] || 950
     const coverPaperPrice = PAPER_PRICES[coverWeight] || 1500
-    const masterArea = MASTER_W * MASTER_H
-    const totalPaperCost = (innerSheets * masterArea / A0_AREA) * innerPaperPrice
-                         + (coverSheets * masterArea / A0_AREA) * coverPaperPrice
+    const totalPaperCost = innerSheets*innerPaperPrice + coverSheets*coverPaperPrice
 
-    const innerForms = (innerPages > 0 && pagesPerSheet > 0)
-      ? Math.ceil(innerPages / pagesPerSheet) : 0
-    const coverForms = hascover ? 1 : 0
-    const plateCost = printMethod === 'offset' && (innerForms + coverForms) > 0
-      ? (PLATE_COUNT[colorOption] || 4) * 3850 * (innerForms + coverForms)
-      : 0
+    const plateCost = printMethod === 'offset' ? (PLATE_COUNT[colorOption] || 4) * 3850 : 0
 
-    const impressions = innerSheets * sidesPerSheet + coverSheets * 2
-    const pressureTotal = impressions > 0 ? pressureCost * Math.ceil(impressions / 1000) : 0
+    const pressureTotal = totalSheets > 0 ? pressureCost * Math.ceil(totalSheets/1000) : 0
     const postTotal = Object.values(postProc).reduce((s,v) => s+(v||0), 0)
 
     const subtotal = setupCost + totalPaperCost + plateCost + pressureTotal + postTotal
@@ -374,7 +365,6 @@ export default function ProCalculator() {
     return {
       pw, ph, cols, rows, perSheet, pagesPerSheet, sidesPerSheet,
       innerSheets, coverSheets, totalSheets, spineWidth,
-      innerForms, coverForms,
       totalPaperCost, plateCost, pressureTotal, postTotal,
       setupCost, overheadAmt, vatAmt, total, unitCost, efficiency,
       breakdown: [
