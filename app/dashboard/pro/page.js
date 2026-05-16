@@ -715,8 +715,8 @@ export default function ProCalculator() {
                   <div style={sectionTitle}>Хэвлэх арга</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                     {[
-                      { id:'offset',  label:'Офсет',   desc:'Том тираж · өндөр чанар', icon:'🖨️' },
-                      { id:'digital', label:'Дижитал', desc:'Жижиг тираж · хурдан',    icon:'💻' },
+                      { id:'offset',  label:'Офсет',   desc:'Том хэвлэлийн тоо · өндөр чанар', icon:'🖨️' },
+                      { id:'digital', label:'Дижитал', desc:'Бага хэвлэлийн тоо · хурдан',     icon:'💻' },
                     ].map(m => (
                       <button key={m.id} onClick={() => setPrintMethod(m.id)} style={{
                         padding:'14px 16px',textAlign:'left',
@@ -810,7 +810,7 @@ export default function ProCalculator() {
                 {/* Quantity + pages */}
                 <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
                   padding:'18px 20px',marginBottom:12}}>
-                  <div style={sectionTitle}>Тираж & Нүүр</div>
+                  <div style={sectionTitle}>Хэвлэлийн тоо & Нүүр</div>
                   <div style={{marginBottom:12}}>
                     <label style={lbl}>Нийт ширхэг</label>
                     <input style={{...inp,fontSize:17,fontWeight:700,padding:'10px 13px',marginBottom:10}}
