@@ -149,19 +149,17 @@ const COLOR_OPTIONS = [
   { id:'4+4', label:'4+4', desc:'Хоёр тал · бүтэн өнгө', plates:8 },
 ]
 
-const MASTER_W = 889, MASTER_H = 1194
-
 const PRODUCT_DEFAULTS = {
-  poster:    { pages:1,  printMethod:'offset',  paperSize:'А3',     paperWeight:157, colorOption:'4+0', hascover:false },
-  brochure:  { pages:4,  printMethod:'offset',  paperSize:'А4',     paperWeight:157, colorOption:'4+4', hascover:false },
-  magazine:  { pages:32, printMethod:'offset',  paperSize:'А4',     paperWeight:90,  colorOption:'4+4', hascover:true, coverWeight:300 },
-  calendar:  { pages:12, printMethod:'offset',  paperSize:'А3',     paperWeight:150, colorOption:'4+0', hascover:false },
-  newspaper: { pages:8,  printMethod:'offset',  paperSize:'А3',     paperWeight:57,  colorOption:'1+0', hascover:false },
-  book:      { pages:96, printMethod:'offset',  paperSize:'А5',     paperWeight:80,  colorOption:'1+0', hascover:true, coverWeight:250 },
-  blank:     { pages:1,  printMethod:'offset',  paperSize:'А4',     paperWeight:80,  colorOption:'1+0', hascover:false },
-  sticker:   { pages:1,  printMethod:'digital', paperSize:'А4',     paperWeight:80,  colorOption:'4+0', hascover:false },
-  namecard:  { pages:2,  printMethod:'offset',  paperSize:'99х210', paperWeight:300, colorOption:'4+4', hascover:false },
-  packaging: { pages:1,  printMethod:'offset',  paperSize:'Дурын',  paperWeight:200, colorOption:'4+0', hascover:false },
+  poster:    { pages:1,  perSheet:2,  printMethod:'offset',  paperSize:'А3',     paperWeight:157, colorOption:'4+0', hascover:false },
+  brochure:  { pages:4,  perSheet:4,  printMethod:'offset',  paperSize:'А4',     paperWeight:157, colorOption:'4+4', hascover:false },
+  magazine:  { pages:32, perSheet:4,  printMethod:'offset',  paperSize:'А4',     paperWeight:90,  colorOption:'4+4', hascover:true, coverWeight:300 },
+  calendar:  { pages:12, perSheet:2,  printMethod:'offset',  paperSize:'А3',     paperWeight:150, colorOption:'4+0', hascover:false },
+  newspaper: { pages:8,  perSheet:2,  printMethod:'offset',  paperSize:'А3',     paperWeight:57,  colorOption:'1+0', hascover:false },
+  book:      { pages:96, perSheet:8,  printMethod:'offset',  paperSize:'А5',     paperWeight:80,  colorOption:'1+0', hascover:true, coverWeight:250 },
+  blank:     { pages:1,  perSheet:4,  printMethod:'offset',  paperSize:'А4',     paperWeight:80,  colorOption:'1+0', hascover:false },
+  sticker:   { pages:1,  perSheet:4,  printMethod:'digital', paperSize:'А4',     paperWeight:80,  colorOption:'4+0', hascover:false },
+  namecard:  { pages:2,  perSheet:8,  printMethod:'offset',  paperSize:'99х210', paperWeight:300, colorOption:'4+4', hascover:false },
+  packaging: { pages:1,  perSheet:1,  printMethod:'offset',  paperSize:'Дурын',  paperWeight:200, colorOption:'4+0', hascover:false },
 }
 
 const STEPS = [
@@ -201,7 +199,7 @@ export default function ProCalculator() {
   const [saveModal, setSaveModal] = useState(false)
   const [calcName, setCalcName]   = useState('')
   const [step, setStep]           = useState(1)
-  const [showAdvanced, setShowAdvanced] = useState(false)
+
 
   const [productType,  setProductType]  = useState('brochure')
   const [printMethod,  setPrintMethod]  = useState('offset')
@@ -215,8 +213,7 @@ export default function ProCalculator() {
   const [hascover,     setHascover]     = useState(false)
   const [coverWeight,  setCoverWeight]  = useState(250)
   const [orient,       setOrient]       = useState('portrait')
-  const [marginMm,     setMarginMm]     = useState(5)
-  const [gapMm,        setGapMm]        = useState(3)
+  const [perSheet,     setPerSheet]     = useState(4)
   const [setupCost,      setSetupCost]      = useState(50000)
   const [pressureCost,   setPressureCost]   = useState(40000)
   const [setupManual,    setSetupManual]    = useState(false)
@@ -280,6 +277,7 @@ export default function ProCalculator() {
     if (!d) return
     setProductType(type)
     setPages(d.pages)
+    setPerSheet(d.perSheet)
     setPrintMethod(d.printMethod)
     setPaperSize(d.paperSize)
     setPaperWeight(d.paperWeight)
@@ -312,12 +310,6 @@ export default function ProCalculator() {
         ? [PAPER_SIZES[paperSize][1], PAPER_SIZES[paperSize][0]]
         : PAPER_SIZES[paperSize]
 
-    const usableW = MASTER_W - 2*marginMm
-    const usableH = MASTER_H - 2*marginMm
-    const cols = pw > 0 ? Math.max(0, Math.floor((usableW+gapMm)/(pw+gapMm))) : 0
-    const rows = ph > 0 ? Math.max(0, Math.floor((usableH+gapMm)/(ph+gapMm))) : 0
-    const perSheet = cols * rows
-
     const innerPages = hascover ? Math.max(0, pages-4) : pages
     const sidesPerSheet = colorOption.endsWith('+4') || colorOption.endsWith('+1') ? 2 : 1
     const pagesPerSheet = perSheet * sidesPerSheet
@@ -325,10 +317,7 @@ export default function ProCalculator() {
       ? Math.ceil(innerPages/pagesPerSheet) * qty : 0
     const spineWidth = hascover
       ? Math.max(2, Math.round((innerPages/2) * (PAPER_THICKNESS[paperWeight] || 0.1))) : 0
-    const coverSheets = hascover
-      ? Math.ceil(qty / Math.max(1,
-          Math.floor((usableW+gapMm)/((pw*2+spineWidth)+gapMm)) *
-          Math.floor((usableH+gapMm)/(ph+gapMm)))) : 0
+    const coverSheets = hascover ? Math.ceil(qty / Math.max(1, perSheet)) : 0
     const totalSheets = innerSheets + coverSheets
 
     const innerPaperPrice = PAPER_PRICES[paperWeight] || 950
@@ -349,7 +338,7 @@ export default function ProCalculator() {
       ? (innerPages/(Math.ceil(innerPages/pagesPerSheet)*pagesPerSheet)*100) : 100
 
     return {
-      pw, ph, cols, rows, perSheet, pagesPerSheet, sidesPerSheet,
+      pw, ph, perSheet, pagesPerSheet, sidesPerSheet,
       innerSheets, coverSheets, totalSheets, spineWidth,
       totalPaperCost, plateCost, pressureTotal, postTotal,
       setupCost, overheadAmt, vatAmt, total, unitCost, efficiency,
@@ -364,7 +353,7 @@ export default function ProCalculator() {
       ],
     }
   }, [productType, printMethod, qty, paperSize, customW, customH, paperWeight,
-      colorOption, pages, hascover, coverWeight, orient, marginMm, gapMm,
+      colorOption, pages, hascover, coverWeight, orient, perSheet,
       setupCost, pressureCost, overhead, vat, postProc])
 
   const fmt  = n => Math.round(n).toLocaleString()
@@ -793,24 +782,21 @@ export default function ProCalculator() {
                         onClick={()=>setPaperSize('Дурын')}>Дурын</strong> сонгоно уу
                     </div>
                   )}
-
-                  {result.perSheet > 0 && (
-                    <div style={{background:C.accentGlow,borderRadius:8,padding:'8px 12px',
-                      display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10}}>
-                      <span style={{fontSize:11,color:C.accent,fontWeight:600}}>
-                        Нэг мастер хуудаст багтах
-                      </span>
-                      <span style={{fontSize:15,fontWeight:800,color:C.accent}}>
-                        {result.cols}×{result.rows} = {result.perSheet} ш
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Quantity + pages */}
                 <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
                   padding:'18px 20px',marginBottom:12}}>
                   <div style={sectionTitle}>Хэвлэлийн тоо & Нүүр</div>
+                  <div style={{marginBottom:12}}>
+                    <label style={lbl}>Нэг хуудаст багтах ширхэг</label>
+                    <input style={{...inp,fontSize:16,fontWeight:700,padding:'9px 12px',marginBottom:4}}
+                      type="number" min={1} value={perSheet} onFocus={e=>e.target.select()}
+                      onChange={e=>setPerSheet(Math.max(1,+e.target.value||1))}/>
+                    <div style={{fontSize:10,color:C.textDim}}>
+                      Таны хэвлэлийн машины нэг хуудсанд хэдэн ширхэг багтах вэ
+                    </div>
+                  </div>
                   <div style={{marginBottom:12}}>
                     <label style={lbl}>Нийт ширхэг</label>
                     <input style={{...inp,fontSize:17,fontWeight:700,padding:'10px 13px',marginBottom:10}}
@@ -875,32 +861,6 @@ export default function ProCalculator() {
                       ₮{fmt(result.totalPaperCost)}
                     </span>
                   </div>
-                </div>
-
-                {/* Advanced */}
-                <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
-                  padding:'12px 20px',marginBottom:24}}>
-                  <button onClick={()=>setShowAdvanced(v=>!v)} style={{
-                    display:'flex',alignItems:'center',justifyContent:'space-between',
-                    width:'100%',background:'none',border:'none',cursor:'pointer',
-                    fontSize:12,fontWeight:700,color:C.textMid,padding:0}}>
-                    <span>⚙️ Дэвшилтэт тохиргоо (ирмэг, зай)</span>
-                    <span style={{transition:'transform .2s',transform:showAdvanced?'rotate(180deg)':'none'}}>▾</span>
-                  </button>
-                  {showAdvanced && (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:14}}>
-                      <div>
-                        <label style={lbl}>Ирмэгийн зай (мм)</label>
-                        <input style={inp} type="number" value={marginMm}
-                          onFocus={e=>e.target.select()} onChange={e=>setMarginMm(+e.target.value||0)}/>
-                      </div>
-                      <div>
-                        <label style={lbl}>Хуудас хоорондын зай (мм)</label>
-                        <input style={inp} type="number" value={gapMm}
-                          onFocus={e=>e.target.select()} onChange={e=>setGapMm(+e.target.value||0)}/>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <NavButtons onBack={()=>setStep(1)} onNext={()=>setStep(3)} nextLabel="Өнгийн сонголт →"/>
@@ -1109,7 +1069,7 @@ export default function ProCalculator() {
                   {[
                     { l:'Нийт өртөг',  v:fmtU(result.total),              sub:`${qty.toLocaleString()} ш`,    color:C.accent  },
                     { l:'Нэгж өртөг',  v:`₮${result.unitCost.toFixed(1)}`, sub:'нэг ширхэг',                  color:C.purple  },
-                    { l:'Үр ашиг',     v:`${result.efficiency.toFixed(1)}%`, sub:`${result.perSheet}ш/хуудас`, color:C.success },
+                    { l:'Үр ашиг',     v:`${result.efficiency.toFixed(1)}%`, sub:`${perSheet}ш/хуудас`, color:C.success },
                   ].map(m=>(
                     <div key={m.l} style={{background:C.surface,borderRadius:12,
                       border:`1px solid ${C.border}`,padding:'14px 16px',position:'relative',overflow:'hidden'}}>
@@ -1124,22 +1084,8 @@ export default function ProCalculator() {
                   ))}
                 </div>
 
-                {/* Layout + Breakdown */}
-                <div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:12,marginBottom:12}}>
-                  <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
-                    padding:'14px',display:'flex',flexDirection:'column',alignItems:'center'}}>
-                    <div style={{alignSelf:'stretch',marginBottom:10}}>
-                      <div style={{fontSize:11,fontWeight:700,color:C.text}}>Байршуулалт</div>
-                      <div style={{fontSize:10,color:C.textDim,marginTop:2}}>
-                        Мастер хуудас: {MASTER_W}×{MASTER_H}мм
-                      </div>
-                    </div>
-                    <LayoutVis cols={result.cols} rows={result.rows} pW={result.pw} pH={result.ph}
-                      masterW={MASTER_W} masterH={MASTER_H} margin={marginMm} gap={gapMm}/>
-                    <div style={{marginTop:8,fontSize:11,color:C.textMid,textAlign:'center'}}>
-                      {result.cols}×{result.rows} = <strong style={{color:C.text}}>{result.perSheet}ш</strong>/хуудас
-                    </div>
-                  </div>
+                {/* Breakdown */}
+                <div style={{marginBottom:12}}>
                   <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:'14px'}}>
                     <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:10}}>Зардлын задаргаа</div>
                     {result.breakdown.map(({l,v})=>(
@@ -1168,10 +1114,10 @@ export default function ProCalculator() {
                   <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:10}}>Техникийн дэлгэрэнгүй</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
                     {[
-                      ['Бүтээгдэхүүний хэмжээ', `${result.pw}×${result.ph}мм (${paperSize})`],
-                      ['Мастер-д багтах',        `${result.cols}×${result.rows} = ${result.perSheet}ш`],
-                      ['Нийт дотоод хуудас',     result.innerSheets.toLocaleString()],
-                      ['Нийт хуудас',            result.totalSheets.toLocaleString()],
+                      ['Бүтээгдэхүүний хэмжээ',   `${result.pw}×${result.ph}мм (${paperSize})`],
+                      ['Нэг хуудаст багтах',       `${result.perSheet} ш`],
+                      ['Нийт дотоод хуудас',       result.innerSheets.toLocaleString()],
+                      ['Нийт хуудас',              result.totalSheets.toLocaleString()],
                       hascover && ['Номын нуруу',      `${result.spineWidth}мм`],
                       hascover && ['Хавтасны хуудас',  result.coverSheets.toLocaleString()],
                     ].filter(Boolean).map(([k,v])=>(
@@ -1315,31 +1261,3 @@ function NavButtons({ onBack, onNext, nextLabel }) {
   )
 }
 
-function LayoutVis({ cols, rows, pW, pH, masterW, masterH, margin, gap }) {
-  const maxW=185, maxH=140
-  if (!pW || !pH) return null
-  const scale = Math.min(maxW/masterW, maxH/masterH, 1)
-  const vw=Math.round(masterW*scale), vh=Math.round(masterH*scale)
-  const sm=Math.round(margin*scale)
-  const sw=Math.max(1,Math.round(pW*scale)), sh=Math.max(1,Math.round(pH*scale))
-  const sg=Math.round(gap*scale)
-  const items=[]
-  for(let r=0;r<rows;r++)
-    for(let c=0;c<cols;c++)
-      items.push({x:sm+c*(sw+sg),y:sm+r*(sh+sg),n:r*cols+c+1})
-  return (
-    <div style={{position:'relative',background:'#f4f6fb',border:'1.5px solid #e2e8f3',
-      borderRadius:6,width:vw,height:vh,flexShrink:0}}>
-      <div style={{position:'absolute',left:sm,top:sm,right:sm,bottom:sm,
-        border:'1px dashed #c5d0e8',borderRadius:2,pointerEvents:'none'}}/>
-      {items.map(({x,y,n})=>(
-        <div key={n} style={{position:'absolute',left:x,top:y,width:sw,height:sh,
-          background:'rgba(79,124,255,0.10)',border:'0.5px solid #3563e9',borderRadius:1,
-          display:'flex',alignItems:'center',justifyContent:'center',
-          fontSize:Math.max(5,Math.min(8,sw/3)),color:'#4f7cff',fontWeight:700}}>
-          {sw>12&&sh>10?n:''}
-        </div>
-      ))}
-    </div>
-  )
-}
