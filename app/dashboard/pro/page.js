@@ -1128,8 +1128,11 @@ export default function ProCalculator() {
                 <div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:12,marginBottom:12}}>
                   <div style={{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,
                     padding:'14px',display:'flex',flexDirection:'column',alignItems:'center'}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:10,alignSelf:'flex-start'}}>
-                      Байршуулалт
+                    <div style={{alignSelf:'stretch',marginBottom:10}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.text}}>Байршуулалт</div>
+                      <div style={{fontSize:10,color:C.textDim,marginTop:2}}>
+                        Мастер хуудас: {MASTER_W}×{MASTER_H}мм
+                      </div>
                     </div>
                     <LayoutVis cols={result.cols} rows={result.rows} pW={result.pw} pH={result.ph}
                       masterW={MASTER_W} masterH={MASTER_H} margin={marginMm} gap={gapMm}/>
