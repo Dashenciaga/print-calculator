@@ -976,7 +976,7 @@ export default function ProCalculator() {
                     </div>
                     <div>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
-                        <label style={{...lbl,marginBottom:0}}>1000 дарлалт (₮)</label>
+                        <label style={{...lbl,marginBottom:0}}>1000 даралт (₮)</label>
                         {!pressureManual
                           ? <span style={{fontSize:9,color:C.success,fontWeight:700,
                               background:'rgba(16,185,129,0.1)',padding:'2px 7px',borderRadius:4}}>АВТО</span>
