@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('app/dashboard/pro/page.js','utf8'\\)\")",
+      "Read(//c/Users/NewTech/.claude/projects/c--Users-NewTech-Desktop-print-calculator/**)",
+      "Bash(npm install *)",
+      "Bash(npm test *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\NewTech\\.claude\\projects\\c--Users-NewTech-Desktop-print-calculator\\memory"
+    ]
+  }
+}
