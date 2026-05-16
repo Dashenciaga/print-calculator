@@ -285,7 +285,7 @@ export default function Dashboard() {
             <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{p.s}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
+<button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
           </div>
         </div>

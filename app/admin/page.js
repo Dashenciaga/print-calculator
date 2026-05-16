@@ -56,7 +56,7 @@ export default function AdminPage() {
       const d = await r.json()
       if (d.error) {
         if (r.status === 403) {
-          router.push('/dashboard/pro')
+          router.push('/dashboard')
           return
         }
         setError(d.error)
@@ -164,7 +164,7 @@ export default function AdminPage() {
         </div>
 
         <div style={{ padding: '12px 8px', borderTop: `1px solid ${C.border}` }}>
-          <button onClick={() => router.push('/dashboard/pro')} style={{
+          <button onClick={() => router.push('/dashboard')} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', width: '100%',
             background: 'none', color: C.textMid, border: 'none', borderRadius: 8,
             cursor: 'pointer', fontSize: 12, marginBottom: 4, textAlign: 'left',
@@ -172,7 +172,7 @@ export default function AdminPage() {
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Pro Dashboard
+            Dashboard
           </button>
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', width: '100%',
