@@ -105,7 +105,37 @@ export default function QuoteModal({ onClose, calcData, profile }) {
   }
 
   function handlePrint() { openPrintWindow() }
-  function handlePDF()   { openPrintWindow() }
+
+  async function handlePDF() {
+    const el = document.getElementById('quotePrintArea')
+    if (!el) return
+    const clone = el.cloneNode(true)
+    clone.querySelectorAll('input').forEach(inp => {
+      const div = document.createElement('div')
+      div.textContent = inp.value || '—'
+      div.style.cssText = 'padding:4px 7px;font-size:11px;color:#1a1f36;margin-bottom:4px;'
+      inp.replaceWith(div)
+    })
+    clone.style.cssText = 'background:white;padding:24px;font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;width:760px;'
+
+    const wrap = document.createElement('div')
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;'
+    wrap.appendChild(clone)
+    document.body.appendChild(wrap)
+
+    try {
+      const html2pdf = (await import('html2pdf.js')).default
+      await html2pdf().set({
+        margin: 10,
+        filename: `${quoteNum}-${(clientName || 'quote').replace(/[^\wЀ-ӿ]+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(clone).save()
+    } finally {
+      document.body.removeChild(wrap)
+    }
+  }
 
   const coName = profile?.company_name || 'Компанийн нэр'
   const coPhone = profile?.phone || ''
