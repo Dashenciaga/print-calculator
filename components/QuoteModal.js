@@ -80,9 +80,32 @@ export default function QuoteModal({ onClose, calcData, profile }) {
     wmName: { fontSize:9, fontWeight:500, color:'#1a1f36' },
   }
 
-  function handlePrint() {
-    window.print()
+  function openPrintWindow() {
+    const el = document.getElementById('quotePrintArea')
+    if (!el) return
+    const clone = el.cloneNode(true)
+    clone.querySelectorAll('input').forEach(inp => {
+      const span = document.createElement('div')
+      span.textContent = inp.value || '—'
+      span.style.cssText = 'padding:4px 7px;font-size:11px;color:#1a1f36;margin-bottom:4px;'
+      inp.replaceWith(span)
+    })
+    const win = window.open('', '_blank', 'width=900,height=720')
+    if (!win) { alert('Поп-ап нээгдсэнгүй. Хөтчийн тохиргоог шалгана уу.'); return }
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${quoteNum} — Үнийн санал</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;margin:0;padding:24px;}
+  table{border-collapse:collapse;}
+  @media print{body{padding:0;} @page{margin:1cm;}}
+</style></head><body>${clone.outerHTML}
+<script>window.onload=function(){setTimeout(function(){window.print();},150)}<\/script>
+</body></html>`)
+    win.document.close()
   }
+
+  function handlePrint() { openPrintWindow() }
+  function handlePDF()   { openPrintWindow() }
 
   const coName = profile?.company_name || 'Компанийн нэр'
   const coPhone = profile?.phone || ''
@@ -100,7 +123,7 @@ export default function QuoteModal({ onClose, calcData, profile }) {
           <div style={s.actions}>
             <button style={s.btnOut} onClick={onClose}>✕ Хаах</button>
             <button style={s.btnOut} onClick={handlePrint}>🖨 Хэвлэх</button>
-            <button style={s.btnPri}>⬇ PDF татах</button>
+            <button style={s.btnPri} onClick={handlePDF}>⬇ PDF татах</button>
           </div>
         </div>
 
