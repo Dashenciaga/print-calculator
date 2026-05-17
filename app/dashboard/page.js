@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import QuoteModal from '@/components/QuoteModal'
 
 const PRODUCTS = {
   poster:   { t:'Постер',         s:'Нэг талтай · Офсет хэвлэл',     dig:false, fold:0,   faces:1, side:1, sheet:'B3', plate:3850, press:40000, spa:5,  pw:364, ph:515 },
@@ -167,6 +168,7 @@ export default function Dashboard() {
   const [vTigel, setVTigel] = useState(0)
   const [vUdees, setVUdees] = useState(0)
   const [result, setResult] = useState({})
+  const [showQuote, setShowQuote] = useState(false)
   const cvHRef = useRef(null)
   const cvVRef = useRef(null)
   const router = useRouter()
@@ -285,7 +287,8 @@ export default function Dashboard() {
             <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{p.s}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
-<button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
+            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=>setShowQuote(true)}>📋 Үнийн санал</button>
+            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
           </div>
         </div>
@@ -463,6 +466,26 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showQuote && (
+        <QuoteModal
+          onClose={() => setShowQuote(false)}
+          profile={profile}
+          calcData={{
+            baseCost: result.total || 0,
+            profitPct: profit,
+            qty,
+            printSheet: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,
+            prodW, prodH, sides,
+            process: [
+              vGlue && 'Бүрэлт', vFold && 'Нугалаа', vLak && 'Лак',
+              vHolio && 'Холио', vTigel && 'Тигель', vUdees && 'Үдээс',
+              'Огтлоо',
+            ].filter(Boolean).join(' · '),
+            productName: p.t,
+          }}
+        />
+      )}
     </div>
   )
 }
