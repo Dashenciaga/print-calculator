@@ -39,7 +39,7 @@ export async function GET() {
       admin.auth.admin.listUsers({ perPage: 1000 }),
       admin.from('profiles').select('*'),
       admin.from('subscriptions').select('*'),
-      admin.from('calculations').select('user_id, total, created_at').order('created_at', { ascending: false }),
+      admin.from('calculations').select('user_id, name, paper_size, qty, total, created_at').order('created_at', { ascending: false }),
     ])
 
     const combined = users.map(u => ({

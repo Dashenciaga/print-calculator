@@ -169,6 +169,10 @@ export default function Dashboard() {
   const [vUdees, setVUdees] = useState(0)
   const [result, setResult] = useState({})
   const [showQuote, setShowQuote] = useState(false)
+  const [showSave, setShowSave] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
   const cvHRef = useRef(null)
   const cvVRef = useRef(null)
   const router = useRouter()
@@ -247,6 +251,32 @@ export default function Dashboard() {
     router.push('/')
   }
 
+  async function handleSave() {
+    if (!user) return
+    const name = saveName.trim() ||
+      `${PRODUCTS[curProd].t} — ${new Date().toLocaleDateString('mn-MN')}`
+    setSaving(true); setSaveMsg('')
+    try {
+      const supabase = createClient()
+      const sh = getSheetWH()
+      const { error } = await supabase.from('calculations').insert({
+        user_id: user.id,
+        name,
+        paper_size: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,
+        paper_w: sh.w, paper_h: sh.h,
+        material_w: prodW, material_h: prodH,
+        qty,
+        total: Math.round(result.total || 0),
+        per_sheet: result.perSheet || 0,
+        efficiency: 100,
+      })
+      if (error) { setSaveMsg('Алдаа: ' + error.message); return }
+      setSaveMsg('✓ Хадгалагдлаа')
+      setSaveName('')
+      setTimeout(() => { setShowSave(false); setSaveMsg('') }, 1200)
+    } finally { setSaving(false) }
+  }
+
   const p = PRODUCTS[curProd]
   const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
@@ -287,6 +317,7 @@ export default function Dashboard() {
             <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{p.s}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
+            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontWeight:500}} onClick={()=>{setSaveName('');setSaveMsg('');setShowSave(true)}}>💾 Хадгалах</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=>setShowQuote(true)}>📋 Үнийн санал</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
@@ -466,6 +497,35 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showSave && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}
+          onClick={e=>e.target===e.currentTarget&&setShowSave(false)}>
+          <div style={{background:'white',borderRadius:12,border:'0.5px solid #e2e8f0',width:'100%',maxWidth:380,padding:'20px 22px',fontFamily:'system-ui,sans-serif'}}>
+            <div style={{fontSize:14,fontWeight:600,color:'#1a1f36',marginBottom:4}}>Тооцоо хадгалах</div>
+            <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Тооцоонд нэр өгнө үү</div>
+            <label style={{fontSize:10,fontWeight:600,color:'#64748b',letterSpacing:'.05em',textTransform:'uppercase'}}>Тооцооны нэр</label>
+            <input autoFocus type="text"
+              placeholder={`${PRODUCTS[curProd].t} — ${new Date().toLocaleDateString('mn-MN')}`}
+              value={saveName} onChange={e=>setSaveName(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleSave()}
+              style={{width:'100%',padding:'8px 11px',fontSize:12,border:'0.5px solid #e2e8f0',borderRadius:8,marginTop:5,marginBottom:14,outline:'none',color:'#1a1f36',boxSizing:'border-box'}}/>
+            {saveMsg && (
+              <div style={{fontSize:11,padding:'6px 10px',borderRadius:6,marginBottom:10,
+                background:saveMsg.startsWith('✓')?'#f0fdf4':'#fef2f2',
+                color:saveMsg.startsWith('✓')?'#16a34a':'#dc2626'}}>{saveMsg}</div>
+            )}
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setShowSave(false)} disabled={saving}
+                style={{flex:1,padding:'8px',fontSize:12,border:'0.5px solid #e2e8f0',borderRadius:8,background:'#f8f9fb',color:'#64748b',cursor:'pointer',fontWeight:500}}>Цуцлах</button>
+              <button onClick={handleSave} disabled={saving}
+                style={{flex:1,padding:'8px',fontSize:12,border:'none',borderRadius:8,background:'#4f46e5',color:'white',cursor:saving?'wait':'pointer',fontWeight:600,opacity:saving?.7:1}}>
+                {saving?'Хадгалж байна...':'Хадгалах'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showQuote && (
         <QuoteModal
