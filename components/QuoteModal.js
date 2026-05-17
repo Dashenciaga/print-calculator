@@ -229,7 +229,17 @@ export default function QuoteModal({ onClose, calcData, profile }) {
               {coEmail && <>Асуулт байвал: {coEmail}</>}
             </div>
             <div style={s.wm}>
-              <div style={s.wmIcon}><svg width="7" height="7" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8M8 12h5"/></svg></div>
+              <svg width="13" height="13" viewBox="0 0 75 80" fill="none">
+                <rect x="8"  y="4"  width="7" height="46" rx="3.5" fill="#4f46e5" opacity="0.85"/>
+                <rect x="8"  y="58" width="7" height="10" rx="3.5" fill="#4f46e5" opacity="0.35"/>
+                <rect x="21" y="4"  width="7" height="22" rx="3.5" fill="#4f46e5" opacity="0.6"/>
+                <rect x="21" y="34" width="7" height="42" rx="3.5" fill="#4f46e5" opacity="0.85"/>
+                <rect x="34" y="4"  width="7" height="58" rx="3.5" fill="#818cf8" opacity="0.9"/>
+                <rect x="47" y="14" width="7" height="10" rx="3.5" fill="#4f46e5" opacity="0.4"/>
+                <rect x="47" y="32" width="7" height="34" rx="3.5" fill="#4f46e5" opacity="0.75"/>
+                <rect x="60" y="4"  width="7" height="50" rx="3.5" fill="#4f46e5" opacity="0.55"/>
+                <rect x="60" y="62" width="7" height="14" rx="3.5" fill="#4f46e5" opacity="0.3"/>
+              </svg>
               <span style={s.wmName}>PrintCalc Pro</span>
             </div>
           </div>
