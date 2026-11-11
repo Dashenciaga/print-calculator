@@ -63,7 +63,7 @@ function drawCanvas(canvas, sheetW, sheetH, itemW, itemH, grid) {
       n++
       if (w > 11 && h > 8) {
         ctx.fillStyle = dk ? '#a5b4fc' : '#4f46e5'
-        ctx.font = `${Math.max(6, Math.min(9, w / 3))}px system-ui`
+        ctx.font = `${Math.max(6, Math.min(9, w / 3))}px ${getComputedStyle(canvas).fontFamily}`
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         ctx.fillText(n, x0 + w / 2, y0 + h / 2)
       }
@@ -77,7 +77,7 @@ const fmtN = n => n == null || !isFinite(n) ? '—'
   : n.toLocaleString(undefined, { maximumFractionDigits: Number.isInteger(n) ? 0 : 1 })
 
 const S = {
-  shell: { display:'flex', height:'100vh', background:'#f4f5f7', fontFamily:'system-ui,-apple-system,sans-serif', overflow:'hidden' },
+  shell: { display:'flex', height:'100vh', background:'#f4f5f7', fontFamily:'var(--app-font)', overflow:'hidden' },
   sidebar: { width:180, background:'white', borderRight:'0.5px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, overflowY:'auto' },
   sbHead: { padding:'12px 14px 8px', borderBottom:'0.5px solid #e2e8f0' },
   sbLabel: { fontSize:11, color:'#94a3b8', letterSpacing:'.05em', textTransform:'uppercase' },
@@ -312,7 +312,7 @@ export default function Dashboard() {
 
   const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
-  if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'system-ui'}}>Ачааллаж байна...</div>
+  if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'var(--app-font)'}}>Ачааллаж байна...</div>
 
   return (
     <div style={S.shell}>
@@ -415,7 +415,7 @@ export default function Dashboard() {
                   <span>ш</span>
                   {perSheetManual != null
                     ? <button style={S.linkBtn} onClick={()=>setPerSheetManual(null)}>↺ авто ({layout.perSheet})</button>
-                    : <span style={{color:'#94a3b8'}}>авто · ↔{layout.horizontal.count} / ↕{layout.vertical.count}</span>}
+                    : <span style={{color:'#94a3b8'}}>авто · хэвтээ {layout.horizontal.count}, босоо {layout.vertical.count}</span>}
                 </div>
               </div>
 
@@ -546,7 +546,7 @@ export default function Dashboard() {
       {showSave && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}
           onClick={e=>e.target===e.currentTarget&&setShowSave(false)}>
-          <div style={{background:'white',borderRadius:12,border:'0.5px solid #e2e8f0',width:'100%',maxWidth:380,padding:'20px 22px',fontFamily:'system-ui,sans-serif'}}>
+          <div style={{background:'white',borderRadius:12,border:'0.5px solid #e2e8f0',width:'100%',maxWidth:380,padding:'20px 22px',fontFamily:'var(--app-font)'}}>
             <div style={{fontSize:14,fontWeight:600,color:'#1a1f36',marginBottom:4}}>Тооцоо хадгалах</div>
             <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Тооцоонд нэр өгнө үү</div>
             <label style={{fontSize:10,fontWeight:600,color:'#64748b',letterSpacing:'.05em',textTransform:'uppercase'}}>Тооцооны нэр</label>

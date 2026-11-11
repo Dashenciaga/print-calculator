@@ -40,7 +40,7 @@ export default function QuoteModal({ onClose, calcData, profile }) {
 
   const s = {
     overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:100, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'20px', overflowY:'auto' },
-    modal: { background:'white', borderRadius:12, border:'0.5px solid #e2e8f0', width:'100%', maxWidth:640, fontFamily:'system-ui,-apple-system,sans-serif', marginTop:20 },
+    modal: { background:'white', borderRadius:12, border:'0.5px solid #e2e8f0', width:'100%', maxWidth:640, fontFamily:'var(--app-font)', marginTop:20 },
     top: { padding:'11px 16px', borderBottom:'0.5px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:20, background:'white', zIndex:2, borderRadius:'12px 12px 0 0' },
     topTitle: { fontSize:13, fontWeight:500, color:'#1a1f36' },
     actions: { display:'flex', gap:6 },
@@ -93,14 +93,19 @@ export default function QuoteModal({ onClose, calcData, profile }) {
     })
     const win = window.open('', '_blank', 'width=900,height=720')
     if (!win) { alert('Поп-ап нээгдсэнгүй. Хөтчийн тохиргоог шалгана уу.'); return }
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    // Сайтын фонт (Cera Pro) хэвлэх цонхонд ч ажиллахын тулд CSS-ийг хуулна
+    const pageStyles = [...document.querySelectorAll('link[rel="stylesheet"], style')]
+      .map(el => el.outerHTML).join('\n')
+    win.document.write(`<!DOCTYPE html><html class="${document.documentElement.className}"><head><meta charset="utf-8">
+<base href="${window.location.origin}/">
 <title>${quoteNum} — Үнийн санал</title>
+${pageStyles}
 <style>
-  body{font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;margin:0;padding:24px;}
+  body{font-family:var(--app-font);color:#1a1f36;margin:0;padding:24px;}
   table{border-collapse:collapse;}
   @media print{body{padding:0;} @page{margin:1cm;}}
 </style></head><body>${clone.outerHTML}
-<script>window.onload=function(){setTimeout(function(){window.print();},150)}<\/script>
+<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},150)})}<\/script>
 </body></html>`)
     win.document.close()
   }
@@ -117,7 +122,7 @@ export default function QuoteModal({ onClose, calcData, profile }) {
       div.style.cssText = 'padding:4px 7px;font-size:11px;color:#1a1f36;margin-bottom:4px;'
       inp.replaceWith(div)
     })
-    clone.style.cssText = 'background:white;padding:24px;font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;width:760px;'
+    clone.style.cssText = 'background:white;padding:24px;font-family:var(--app-font);color:#1a1f36;width:760px;'
 
     const wrap = document.createElement('div')
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;'

@@ -237,7 +237,7 @@ export default function Home() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
-        body { background: #f8f9fb; font-family: system-ui,-apple-system,sans-serif; }
+        body { background: #f8f9fb; font-family:var(--app-font); }
 
         /* NAV */
         .nav {

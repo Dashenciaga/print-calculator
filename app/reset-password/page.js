@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase'
 //  2) И-мэйлийн холбоосоор орж ирсэн (эсвэл нэвтэрсэн) бол → шинэ нууц үг тохируулна
 
 const s = {
-  page:  { minHeight:'100vh', background:'#f8f9fb', display:'flex', alignItems:'center', justifyContent:'center', padding:16, fontFamily:'system-ui,-apple-system,sans-serif' },
+  page:  { minHeight:'100vh', background:'#f8f9fb', display:'flex', alignItems:'center', justifyContent:'center', padding:16, fontFamily:'var(--app-font)' },
   card:  { width:'100%', maxWidth:420, background:'white', border:'1px solid #e2e8f0', borderRadius:16, padding:'28px 28px 24px', boxShadow:'0 12px 40px rgba(15,23,42,.06)' },
   title: { fontSize:20, fontWeight:700, color:'#1a1f36', textAlign:'center', marginBottom:4 },
   sub:   { fontSize:13, color:'#64748b', textAlign:'center', marginBottom:22, lineHeight:1.5 },

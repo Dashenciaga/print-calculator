@@ -127,7 +127,7 @@ export default function Profile() {
   }
 
   const s = {
-    page: { minHeight: '100vh', background: '#f4f5f7', fontFamily: 'system-ui,-apple-system,sans-serif' },
+    page: { minHeight: '100vh', background: '#f4f5f7', fontFamily:'var(--app-font)' },
     topbar: { background: 'white', borderBottom: '0.5px solid #e2e8f0', padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 5 },
     tbLeft: { display: 'flex', alignItems: 'center', gap: 10 },
     tbIcon: { width: 28, height: 28, background: '#4f46e5', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' },

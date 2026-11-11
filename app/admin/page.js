@@ -88,14 +88,14 @@ export default function AdminPage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', color: C.textMid, fontSize: 14, fontFamily: 'system-ui,sans-serif' }}>
+      justifyContent: 'center', color: C.textMid, fontSize: 14, fontFamily:'var(--app-font)' }}>
       Ачааллаж байна...
     </div>
   )
 
   if (error) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', flexDirection: 'column', gap: 12, fontFamily: 'system-ui,sans-serif' }}>
+      justifyContent: 'center', flexDirection: 'column', gap: 12, fontFamily:'var(--app-font)' }}>
       <div style={{ fontSize: 32 }}>⚠️</div>
       <div style={{ color: C.danger, fontSize: 14 }}>{error}</div>
       <button onClick={fetchData} style={{ padding: '8px 20px', background: C.accent, color: 'white',
@@ -104,7 +104,7 @@ export default function AdminPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'DM Sans','Helvetica Neue',sans-serif",
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily:'var(--app-font)',
       color: C.text, display: 'flex' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
