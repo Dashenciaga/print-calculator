@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import QuoteModal from '@/components/QuoteModal'
+import UpgradeModal from '@/components/UpgradeModal'
 import { bestLayout, calculateJob } from '@/lib/printCost'
 
 const CUT_COST = 20000 // Огтлоо — заавал
@@ -174,6 +175,8 @@ export default function Dashboard() {
   const [vTigel, setVTigel] = useState(0)
   const [vUdees, setVUdees] = useState(0)
   const [showQuote, setShowQuote] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
+  const [billing, setBilling] = useState(null) // { pro, expires_at, pending, ... } — серверээс
   const [showSave, setShowSave] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -190,6 +193,9 @@ export default function Dashboard() {
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
       if (prof) setProfile(prof)
+      // Pro эрхийг серверээс шалгана
+      const br = await fetch('/api/billing/status', { cache: 'no-store' }).catch(() => null)
+      if (br?.ok) setBilling(await br.json())
     }
     init()
   }, [])
@@ -349,8 +355,14 @@ export default function Dashboard() {
             <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{p.s}</div>
           </div>
           <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>setShowUpgrade(true)} title="Эрхийн мэдээлэл"
+              style={{fontSize:11,padding:'5px 10px',borderRadius:8,cursor:'pointer',fontWeight:600,
+                border: billing?.pro ? '0.5px solid #fcd34d' : '0.5px solid #c7d2fe',
+                background: billing?.pro ? '#fffbeb' : '#eef2ff', color: billing?.pro ? '#b45309' : '#4f46e5'}}>
+              {billing?.pro ? '⭐ PRO' : billing?.pending ? '⏳ Төлбөр шалгагдаж байна' : '⭐ Pro авах'}
+            </button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontWeight:500}} onClick={()=>{setSaveName('');setSaveMsg('');setShowSave(true)}}>💾 Хадгалах</button>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=>setShowQuote(true)}>📋 Үнийн санал</button>
+            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=> billing?.pro ? setShowQuote(true) : setShowUpgrade(true)}>{billing?.pro ? '📋 Үнийн санал' : '🔒 Үнийн санал'}</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
           </div>
@@ -570,6 +582,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {showUpgrade && (
+        <UpgradeModal onClose={() => setShowUpgrade(false)} onChange={setBilling} />
       )}
 
       {showQuote && (
