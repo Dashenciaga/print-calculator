@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { PRO_PRICE, PRO_MONTHS } from '@/lib/billing'
 
 export default function Home() {
   const svgRef = useRef(null)
@@ -208,25 +210,43 @@ export default function Home() {
 
   const plans = [
     {
-      name: 'Бүгд үнэгүй',
+      name: 'Үнэгүй',
       price: '₮0',
       sub: 'Бүртгүүлэхэд л хангалттай',
       color: '#4f46e5',
-      bg: '#faf5ff',
-      border: '#a5b4fc',
-      badge: 'Үнэгүй',
-      btnStyle: { background: '#4f46e5', color: 'white', border: 'none' },
+      bg: '#ffffff',
+      border: '#e2e8f0',
+      badge: null,
+      btnStyle: { background: 'white', color: '#4f46e5', border: '1.5px solid #c7d2fe' },
       features: [
         { text: 'Хуудасны байршуулалт тооцоо', ok: true },
-        { text: 'Нэгж өртөг тооцоо', ok: true },
-        { text: 'Үр ашгийн хувь', ok: true },
-        { text: 'Компанийн профайл', ok: true },
-        { text: 'Тооцооны түүх хадгалах', ok: true },
+        { text: 'Нэгж өртөг, ашгийн тооцоо', ok: true },
         { text: 'Нарийн зардлын задаргаа', ok: true },
-        { text: 'PDF үнийн санал үүсгэх', ok: true },
-        { text: 'Хязгааргүй хадгалалт', ok: true },
+        { text: 'Тооцоо хадгалах', ok: true },
+        { text: 'Компанийн профайл', ok: true },
+        { text: 'Үнийн санал, PDF', ok: false },
+        { text: 'И-мэйлээр илгээх', ok: false },
       ],
       cta: 'Үнэгүй эхлэх',
+      ctaAction: () => openSheet(true),
+    },
+    {
+      name: 'Pro',
+      price: '₮' + PRO_PRICE.toLocaleString('en-US'),
+      sub: `${PRO_MONTHS} сарын эрх · дансаар төлнө`,
+      color: '#4f46e5',
+      bg: '#faf5ff',
+      border: '#a5b4fc',
+      badge: 'Санал болгох',
+      btnStyle: { background: '#4f46e5', color: 'white', border: 'none' },
+      features: [
+        { text: 'Үнэгүй эрхийн бүх боломж', ok: true },
+        { text: 'Үнийн санал (давхцахгүй дугаартай)', ok: true },
+        { text: 'PDF татах, хэвлэх', ok: true },
+        { text: 'Үйлчлүүлэгч рүү и-мэйлээр илгээх', ok: true },
+        { text: 'Лого, банкны мэдээлэлтэй брэнд', ok: true },
+      ],
+      cta: 'Pro эхлэх',
       ctaAction: () => openSheet(true),
     },
   ]
@@ -236,7 +256,7 @@ export default function Home() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
-        body { background: #f8f9fb; font-family: system-ui,-apple-system,sans-serif; }
+        body { background: #f8f9fb; font-family:var(--app-font); }
 
         /* NAV */
         .nav {
@@ -343,7 +363,7 @@ export default function Home() {
         /* PRICING */
         .pricing-section { padding: 80px 24px; background: #f4f5f7; }
         .pricing-inner { max-width: 760px; margin: 0 auto; }
-        .plans-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 420px; margin: 0 auto; }
+        .plans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 0 auto; }
         @media (max-width: 600px) { .plans-grid { grid-template-columns: 1fr; } }
         .plan-card {
           border-radius: 14px; padding: 28px 24px;
@@ -594,6 +614,13 @@ export default function Home() {
               <label className="field-label">Нууц үг</label>
               <input className="field-input" type="password" placeholder="••••••••"
                 value={password} onChange={e => setPassword(e.target.value)} required />
+              {!isSignUp && (
+                <div style={{ textAlign:'right', marginTop:-6, marginBottom:13 }}>
+                  <Link href="/reset-password" style={{ fontSize:12, color:'#4f46e5', textDecoration:'none', fontWeight:500 }}>
+                    Нууц үгээ мартсан уу?
+                  </Link>
+                </div>
+              )}
               {error && (
                 <div className={`error-box ${error.includes('шалгаад') ? 'success' : 'error'}`}>{error}</div>
               )}
