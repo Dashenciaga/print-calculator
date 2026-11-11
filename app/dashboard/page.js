@@ -1,8 +1,11 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import QuoteModal from '@/components/QuoteModal'
+import { bestLayout, calculateJob } from '@/lib/printCost'
+
+const CUT_COST = 20000 // Огтлоо — заавал
 
 const PRODUCTS = {
   poster:   { t:'Постер',         s:'Нэг талтай · Офсет хэвлэл',     dig:false, fold:0,   faces:1, side:1, sheet:'B3', plate:3850, press:40000, spa:5,  pw:364, ph:515 },
@@ -32,11 +35,13 @@ const PRESETS = [
   { id:'cust',w:0,   h:0,   label:'✎ Дурын',  sub:''        },
 ]
 
-function drawCanvas(canvas, sheetW, sheetH, itemW, itemH) {
-  if (!canvas) return 0
+// Зөвхөн зурна. Тоог bestLayout()-аас авна — canvas-ын пикселээр тоолохгүй.
+function drawCanvas(canvas, sheetW, sheetH, itemW, itemH, grid) {
+  if (!canvas) return
   const ctx = canvas.getContext('2d')
   const CW = canvas.width, CH = canvas.height, pad = 5
   ctx.clearRect(0, 0, CW, CH)
+  if (!(sheetW > 0 && sheetH > 0)) return
   const sc = Math.min((CW - pad*2) / sheetW, (CH - pad*2) / sheetH)
   const sW = Math.round(sheetW * sc), sH = Math.round(sheetH * sc)
   const ox = Math.round((CW - sW) / 2), oy = Math.round((CH - sH) / 2)
@@ -45,33 +50,31 @@ function drawCanvas(canvas, sheetW, sheetH, itemW, itemH) {
   ctx.strokeStyle = dk ? 'rgba(79,70,229,.6)' : '#c7d2fe'
   ctx.lineWidth = 1
   ctx.beginPath(); ctx.roundRect(ox, oy, sW, sH, 2); ctx.fill(); ctx.stroke()
-  const siW = Math.max(1, Math.round(itemW * sc))
-  const siH = Math.max(1, Math.round(itemH * sc))
-  const cols = Math.floor(sheetW / itemW)
-  const rows = Math.floor(sheetH / itemH)
-  const gap = Math.max(1, Math.round(sc))
   let n = 0
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = ox + c * (siW + gap), y = oy + r * (siH + gap)
-      if (x + siW > ox + sW || y + siH > oy + sH) continue
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      const x0 = ox + Math.round(c * itemW * sc), x1 = ox + Math.round((c + 1) * itemW * sc)
+      const y0 = oy + Math.round(r * itemH * sc), y1 = oy + Math.round((r + 1) * itemH * sc)
+      const w = Math.max(1, x1 - x0 - 1), h = Math.max(1, y1 - y0 - 1)
       ctx.fillStyle = dk ? 'rgba(79,70,229,.22)' : '#eef2ff'
       ctx.strokeStyle = dk ? 'rgba(129,140,248,.6)' : '#a5b4fc'
       ctx.lineWidth = 0.5
-      ctx.beginPath(); ctx.roundRect(x, y, siW, siH, 1); ctx.fill(); ctx.stroke()
+      ctx.beginPath(); ctx.roundRect(x0, y0, w, h, 1); ctx.fill(); ctx.stroke()
       n++
-      if (siW > 11 && siH > 8) {
+      if (w > 11 && h > 8) {
         ctx.fillStyle = dk ? '#a5b4fc' : '#4f46e5'
-        ctx.font = `${Math.max(6, Math.min(9, siW / 3))}px system-ui`
+        ctx.font = `${Math.max(6, Math.min(9, w / 3))}px system-ui`
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText(n, x + siW / 2, y + siH / 2)
+        ctx.fillText(n, x0 + w / 2, y0 + h / 2)
       }
     }
   }
-  return n
 }
 
 const fmt = n => '₮' + Math.round(n).toLocaleString()
+// Хуудасны тоо: бүхэл бол бүхлээр, бутархай бол 1 оронтой
+const fmtN = n => n == null || !isFinite(n) ? '—'
+  : n.toLocaleString(undefined, { maximumFractionDigits: Number.isInteger(n) ? 0 : 1 })
 
 const S = {
   shell: { display:'flex', height:'100vh', background:'#f4f5f7', fontFamily:'system-ui,-apple-system,sans-serif', overflow:'hidden' },
@@ -134,6 +137,9 @@ const S = {
   qtyTotal: { display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:6, paddingTop:6, borderTop:'0.5px solid #e2e8f0' },
   info: { background:'#eff6ff', borderRadius:8, padding:'6px 10px', fontSize:11, color:'#3b82f6', marginTop:6 },
   hint: { fontSize:11, color:'#94a3b8', marginTop:3 },
+  err: { background:'#fef2f2', border:'0.5px solid #fecaca', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#dc2626' },
+  linkBtn: { border:'none', background:'none', padding:0, fontSize:11, color:'#4f46e5', cursor:'pointer', textDecoration:'underline' },
+  manualInp: (manual) => ({ width:56, padding:'3px 7px', fontSize:11, border: manual ? '0.5px solid #facc15' : '0.5px solid #c7d2fe', borderRadius:6, background: manual ? '#fefce8' : 'white', color:'#1a1f36', outline:'none', textAlign:'right' }),
   sbUser: { display:'flex', alignItems:'center', gap:8, padding:'12px 14px', borderTop:'0.5px solid #e2e8f0', marginTop:'auto' },
   sbAvatar: { width:28, height:28, borderRadius:'50%', background:'#4f46e5', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:500, flexShrink:0 },
   sbUname: { fontSize:12, fontWeight:500, color:'#1a1f36' },
@@ -153,7 +159,7 @@ export default function Dashboard() {
   const [prodW, setProdW] = useState(364)
   const [prodH, setProdH] = useState(515)
   const [qty, setQty] = useState(100)
-  const [qtySheet, setQtySheet] = useState(100)
+  const [perSheetManual, setPerSheetManual] = useState(null) // null = автоматаар
   const [qtyWaste, setQtyWaste] = useState(100)
   const [spa, setSpa] = useState(5)
   const [a0Price, setA0Price] = useState(1200)
@@ -162,12 +168,11 @@ export default function Dashboard() {
   const [digPr, setDigPr] = useState(1500)
   const [faces, setFaces] = useState(1)
   const [vGlue, setVGlue] = useState(0)
-  const [vFold, setVFold] = useState(0)
+  const [vFoldManual, setVFoldManual] = useState(null) // null = захиалгын тоо × тариф
   const [vLak, setVLak] = useState(0)
   const [vHolio, setVHolio] = useState(0)
   const [vTigel, setVTigel] = useState(0)
   const [vUdees, setVUdees] = useState(0)
-  const [result, setResult] = useState({})
   const [showQuote, setShowQuote] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [saveName, setSaveName] = useState('')
@@ -189,33 +194,56 @@ export default function Dashboard() {
     init()
   }, [])
 
-  const getSheetWH = useCallback(() => {
-    if (printSheet === 'custom') return { w: psW || 364, h: psH || 515 }
-    return SHEET_SIZES[printSheet] || SHEET_SIZES.B3
-  }, [printSheet, psW, psH])
+  const p = PRODUCTS[curProd]
+
+  const sheet = useMemo(() => (
+    printSheet === 'custom'
+      ? { w: psW || 364, h: psH || 515 }
+      : SHEET_SIZES[printSheet] || SHEET_SIZES.B3
+  ), [printSheet, psW, psH])
+
+  // 1 хуудаст багтах тоо: хэвтээ, босоогийн аль ихийг нь (нэмэхгүй)
+  const layout = useMemo(() => bestLayout(sheet.w, sheet.h, prodW, prodH), [sheet, prodW, prodH])
+  const perSheet = perSheetManual ?? layout.perSheet
+  const vFold = vFoldManual ?? (p.fold > 0 ? qty * p.fold : 0)
+
+  // Excel-ийн томьёогоор: J = E × G / H + F, K = J / I ...
+  const jobInput = useMemo(() => ({
+    qty,
+    waste:          qtyWaste,
+    faces,
+    multiPage:      p.faces > 1,
+    twoSided:       sides === 2,
+    perSheet,
+    sheetsPerA0:    spa,
+    a0Price,
+    digital:        p.dig,
+    platePrice:     platePr,
+    pressPrice:     pressPr,
+    digitalPrice:   digPr,
+    finishingFixed: vGlue + vLak + vHolio + vTigel + vUdees + CUT_COST,
+    foldPerUnit:    p.fold,
+    foldManual:     vFoldManual,
+    profitPct:      profit,
+  }), [qty, qtyWaste, faces, p, sides, perSheet, spa, a0Price, platePr, pressPr, digPr, vGlue, vLak, vHolio, vTigel, vUdees, vFoldManual, profit])
+
+  const { result, calcError } = useMemo(() => {
+    try {
+      return { result: calculateJob(jobInput), calcError: '' }
+    } catch (e) {
+      return { result: {}, calcError: e.message }
+    }
+  }, [jobInput])
+
+  // Үнийн саналын хүснэгтэд бусад тоо ширхэгийн үнийг ЖИНХЭНЭ тооцоогоор гаргана
+  const priceAt = q => {
+    try { return calculateJob({ ...jobInput, qty: q }).client } catch { return 0 }
+  }
 
   useEffect(() => {
-    const sh = getSheetWH()
-    const iW = prodW || 1, iH = prodH || 1
-    const nH = drawCanvas(cvHRef.current, sh.w, sh.h, iW, iH)
-    const nV = drawCanvas(cvVRef.current, sh.h, sh.w, iW, iH)
-    const perSheet = Math.max(nH + nV, 1)
-    const p = PRODUCTS[curProd]
-    const totalSheets = (qtySheet + qtyWaste) * sides
-    const a0Count = Math.ceil(totalSheets / (spa || 1))
-    const paperCost = a0Count * a0Price
-    const faceCount = p.faces > 1 ? faces : 1
-    const items = Math.ceil(faceCount / (p.faces > 1 ? 4 : 1))
-    const plateMult = sides === 2 ? 8 : 4
-    const plateCount = p.dig ? 0 : items * plateMult
-    const plateCost = plateCount * platePr
-    const pressCost = p.dig ? items * totalSheets * digPr : items * pressPr
-    const proc = vGlue + vFold + vLak + vHolio + vTigel + vUdees + 20000 + pressCost
-    const total = paperCost + plateCost + proc
-    const client = total * (1 + profit / 100)
-    const unit = qty > 0 ? client / qty : 0
-    setResult({ nH, nV, perSheet, totalSheets, a0Count, paperCost, plateCost, pressCost, proc, total, client, unit })
-  }, [curProd, sides, profit, printSheet, psW, psH, prodW, prodH, qty, qtySheet, qtyWaste, spa, a0Price, platePr, pressPr, digPr, faces, vGlue, vFold, vLak, vHolio, vTigel, vUdees])
+    drawCanvas(cvHRef.current, sheet.w, sheet.h, prodW, prodH, layout.horizontal)
+    drawCanvas(cvVRef.current, sheet.h, sheet.w, prodW, prodH, layout.vertical)
+  }, [sheet, prodW, prodH, layout, user])
 
   function selectProduct(key) {
     const p = PRODUCTS[key]
@@ -229,7 +257,8 @@ export default function Dashboard() {
     setProdH(p.ph)
     setFaces(p.faces)
     setActivePreset('cust')
-    setVFold(p.fold > 0 ? qty * p.fold : 0)
+    setVFoldManual(null)
+    setPerSheetManual(null)
   }
 
   function handlePreset(pr) {
@@ -237,10 +266,12 @@ export default function Dashboard() {
     if (pr.id === 'cust') return
     setProdW(pr.w)
     setProdH(pr.h)
+    setPerSheetManual(null)
   }
 
   function handleSheetChange(val) {
     setPrintSheet(val)
+    setPerSheetManual(null)
     const spaMap = { B3:5, A3:8, A2:4, A4:16, A5:32, custom:5 }
     setSpa(spaMap[val] || 5)
   }
@@ -252,23 +283,25 @@ export default function Dashboard() {
   }
 
   async function handleSave() {
-    if (!user) return
+    if (!user || saving) return
+    if (calcError) { setSaveMsg('Алдаа: ' + calcError); return }
     const name = saveName.trim() ||
       `${PRODUCTS[curProd].t} — ${new Date().toLocaleDateString('mn-MN')}`
     setSaving(true); setSaveMsg('')
     try {
       const supabase = createClient()
-      const sh = getSheetWH()
+      // Хуудасны талбайн хэдэн хувийг бүтээгдэхүүн эзэлж байгаа вэ
+      const efficiency = Math.min(100, Math.round(perSheet * prodW * prodH / (sheet.w * sheet.h) * 100)) || 0
       const { error } = await supabase.from('calculations').insert({
         user_id: user.id,
         name,
         paper_size: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,
-        paper_w: sh.w, paper_h: sh.h,
+        paper_w: sheet.w, paper_h: sheet.h,
         material_w: prodW, material_h: prodH,
         qty,
         total: Math.round(result.total || 0),
-        per_sheet: result.perSheet || 0,
-        efficiency: 100,
+        per_sheet: perSheet,
+        efficiency,
       })
       if (error) { setSaveMsg('Алдаа: ' + error.message); return }
       setSaveMsg('✓ Хадгалагдлаа')
@@ -277,7 +310,6 @@ export default function Dashboard() {
     } finally { setSaving(false) }
   }
 
-  const p = PRODUCTS[curProd]
   const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
   if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'system-ui'}}>Ачааллаж байна...</div>
@@ -325,6 +357,7 @@ export default function Dashboard() {
         </div>
 
         <div style={S.body}>
+          {calcError && <div style={S.err}>⚠ {calcError}. Бүтээгдэхүүний хэмжээ эсвэл «1 хуудаст» тоог шалгана уу.</div>}
           {/* ① ХЭВЛЭХ ЦААС */}
           <div>
             <div style={S.sectionLabel}>① Хэвлэх цаасны тохиргоо</div>
@@ -344,8 +377,8 @@ export default function Dashboard() {
                 </div>
                 {printSheet === 'custom' && (
                   <div style={S.grid2}>
-                    <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={psW} onFocus={e=>e.target.select()} onChange={e=>setPsW(+e.target.value||0)}/></div>
-                    <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={psH} onFocus={e=>e.target.select()} onChange={e=>setPsH(+e.target.value||0)}/></div>
+                    <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={psW} onFocus={e=>e.target.select()} onChange={e=>{setPsW(+e.target.value||0);setPerSheetManual(null)}}/></div>
+                    <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={psH} onFocus={e=>e.target.select()} onChange={e=>{setPsH(+e.target.value||0);setPerSheetManual(null)}}/></div>
                   </div>
                 )}
                 <div style={S.fieldLast}>
@@ -371,10 +404,19 @@ export default function Dashboard() {
                   ))}
                 </div>
                 <div style={S.grid2}>
-                  <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={prodW} onFocus={e=>e.target.select()} onChange={e=>{setProdW(+e.target.value||0);setActivePreset('cust')}}/></div>
-                  <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={prodH} onFocus={e=>e.target.select()} onChange={e=>{setProdH(+e.target.value||0);setActivePreset('cust')}}/></div>
+                  <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={prodW} onFocus={e=>e.target.select()} onChange={e=>{setProdW(+e.target.value||0);setActivePreset('cust');setPerSheetManual(null)}}/></div>
+                  <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={prodH} onFocus={e=>e.target.select()} onChange={e=>{setProdH(+e.target.value||0);setActivePreset('cust');setPerSheetManual(null)}}/></div>
                 </div>
-                <div style={S.info}>1 хуудаст: {result.perSheet||'—'}ш (↔{result.nH||0} + ↕{result.nV||0})</div>
+                <div style={{...S.info,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span>1 хуудаст</span>
+                  <input type="number" min={0} style={S.manualInp(perSheetManual!=null)} value={perSheet}
+                    onFocus={e=>e.target.select()}
+                    onChange={e=>setPerSheetManual(Math.max(0, Math.floor(+e.target.value||0)))}/>
+                  <span>ш</span>
+                  {perSheetManual != null
+                    ? <button style={S.linkBtn} onClick={()=>setPerSheetManual(null)}>↺ авто ({layout.perSheet})</button>
+                    : <span style={{color:'#94a3b8'}}>авто · ↔{layout.horizontal.count} / ↕{layout.vertical.count}</span>}
+                </div>
               </div>
 
               {/* Хэвлэх тоо */}
@@ -386,17 +428,20 @@ export default function Dashboard() {
                     <input style={S.qtyInp} type="number" value={qty} onFocus={e=>e.target.select()} onChange={e=>setQty(+e.target.value||0)}/>
                   </div>
                   <div style={S.qtyRow}>
-                    <span style={S.qtyLbl}>Хэвлэх хуудас</span>
-                    <input style={S.qtyInp} type="number" value={qtySheet} onFocus={e=>e.target.select()} onChange={e=>setQtySheet(+e.target.value||0)}/>
-                  </div>
-                  <div style={S.qtyRow}>
                     <span style={S.qtyLbl}>Хадаас</span>
                     <input style={S.qtyInp} type="number" value={qtyWaste} onFocus={e=>e.target.select()} onChange={e=>setQtyWaste(+e.target.value||0)}/>
                   </div>
+                  <div style={S.qtyRow}>
+                    <span style={S.qtyLbl}>Хэвлэх хуудас</span>
+                    <span style={{fontSize:12,fontWeight:500,color:'#1a1f36'}}>{fmtN(result.printSheets)}</span>
+                  </div>
                   <div style={S.qtyTotal}>
                     <span style={{fontSize:12,fontWeight:500,color:'#1a1f36'}}>Нийт хэвлэх</span>
-                    <span style={{fontSize:14,fontWeight:500,color:'#1a1f36'}}>{(qtySheet+qtyWaste).toLocaleString()}</span>
+                    <span style={{fontSize:14,fontWeight:500,color:'#1a1f36'}}>{fmtN(result.totalSheets)}</span>
                   </div>
+                </div>
+                <div style={S.hint}>
+                  {qty.toLocaleString()} × {result.faces ?? '—'} нүүр ÷ {perSheet} + {qtyWaste} хадаас
                 </div>
               </div>
             </div>
@@ -407,27 +452,27 @@ export default function Dashboard() {
             <div style={S.visBox}>
               <div style={S.canvasCol}>
                 <canvas ref={cvHRef} width={140} height={105}/>
-                <div style={S.cvLabel}>↔ Хэвтээ <span style={S.cvBadge}>{result.nH||0}ш</span></div>
+                <div style={S.cvLabel}>↔ Хэвтээ <span style={S.cvBadge}>{layout.horizontal.count}ш</span></div>
               </div>
               <div style={S.canvasCol}>
                 <canvas ref={cvVRef} width={105} height={105}/>
-                <div style={S.cvLabel}>↕ Босоо <span style={S.cvBadge}>{result.nV||0}ш</span></div>
+                <div style={S.cvLabel}>↕ Босоо <span style={S.cvBadge}>{layout.vertical.count}ш</span></div>
               </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               <div style={S.flow}>
-                <div style={S.flItem}><div style={S.flVal}>{result.totalSheets||'—'}хуудас</div><div style={S.flLbl}>Нийт хуудас</div></div>
+                <div style={S.flItem}><div style={S.flVal}>{fmtN(result.totalSheets)} хуудас</div><div style={S.flLbl}>Нийт хуудас</div></div>
                 <div style={S.flArr}>÷</div>
                 <div style={S.flItem}><div style={S.flVal}>{spa}</div><div style={S.flLbl}>A0-аас хуудас</div></div>
                 <div style={S.flArr}>=</div>
-                <div style={S.flItem}><div style={S.flVal}>{result.a0Count||'—'}ш</div><div style={S.flLbl}>A0 цаас</div></div>
+                <div style={S.flItem}><div style={S.flVal}>{fmtN(result.a0Sheets)}ш</div><div style={S.flLbl}>A0 цаас</div></div>
                 <div style={S.flArr}>×</div>
                 <div style={S.flItem}><div style={S.flVal}>₮{a0Price.toLocaleString()}</div><div style={S.flLbl}>A0 үнэ</div></div>
                 <div style={S.flArr}>=</div>
                 <div style={S.flItem}><div style={{...S.flVal,color:'#4f46e5'}}>{result.paperCost!=null?fmt(result.paperCost):'—'}</div><div style={S.flLbl}>Цаасны зардал</div></div>
               </div>
               <div style={S.grid4}>
-                {[['1 хуудаст',(result.perSheet||'—')+'ш'],['Нийт хуудас',(result.totalSheets||'—')+'хуудас'],['A0 цаас',(result.a0Count||'—')+'ш'],['Цаасны зардал',result.paperCost!=null?fmt(result.paperCost):'—']].map(([l,v])=>(
+                {[['1 хуудаст',perSheet+'ш'],['Нийт хуудас',fmtN(result.totalSheets)+' хуудас'],['A0 цаас',fmtN(result.a0Sheets)+'ш'],['Цаасны зардал',result.paperCost!=null?fmt(result.paperCost):'—']].map(([l,v])=>(
                   <div key={l} style={S.metric}>
                     <div style={S.metricLabel}>{l}</div>
                     <div style={{...S.metricVal,fontSize:14}}>{v}</div>
@@ -461,16 +506,16 @@ export default function Dashboard() {
               <div style={S.card}>
                 <div style={S.chkRow}><span style={S.chkL}>Хэвлэлтийн даралт <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>{result.pressCost!=null?fmt(result.pressCost):'—'}</span></div>
                 <div style={S.sep}/>
-                {[['Бүрэлт',vGlue,setVGlue],['Нугалаа',vFold,setVFold],['Лак',vLak,setVLak],['Холио',vHolio,setVHolio],['Тигель',vTigel,setVTigel],['Үдээс',vUdees,setVUdees]].map(([label,val,setter])=>(
+                {[['Бүрэлт',vGlue,setVGlue],['Нугалаа',vFold,setVFoldManual],['Лак',vLak,setVLak],['Холио',vHolio,setVHolio],['Тигель',vTigel,setVTigel],['Үдээс',vUdees,setVUdees]].map(([label,val,setter])=>(
                   <div key={label} style={S.chkRow}>
                     <span style={S.chkL}>{label} <span style={S.badge('opt')}>сонголт</span></span>
                     <div style={S.chkR}><input type="number" style={S.chkInp} value={val} onFocus={e=>e.target.select()} onChange={e=>setter(+e.target.value||0)}/><span style={{fontSize:10,color:'#94a3b8'}}>₮</span></div>
                   </div>
                 ))}
-                <div style={S.chkRow}><span style={S.chkL}>Огтлоо <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>₮20,000</span></div>
+                <div style={S.chkRow}><span style={S.chkL}>Огтлоо <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>{fmt(CUT_COST)}</span></div>
               </div>
               <div style={S.card}>
-                {[['Цаасны зардал',result.paperCost],['Төмрийн зардал',result.plateCost],['Хэвлэлтийн даралт',result.pressCost],['Боловсруулалт',result.proc!=null?result.proc-result.pressCost:null]].map(([l,v])=>(
+                {[['Цаасны зардал',result.paperCost],['Төмрийн зардал',result.plateCost],['Хэвлэлтийн даралт',result.pressCost],['Боловсруулалт',result.finishing]].map(([l,v])=>(
                   <div key={l} style={{...S.brRow,borderBottom:'0.5px solid #f1f5f9'}}>
                     <span style={S.brL}>{l}</span>
                     <span style={S.brV}>{v!=null?fmt(v):'—'}</span>
@@ -533,6 +578,7 @@ export default function Dashboard() {
           profile={profile}
           calcData={{
             baseCost: result.total || 0,
+            priceAt,
             profitPct: profit,
             qty,
             printSheet: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,

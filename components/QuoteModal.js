@@ -18,12 +18,12 @@ export default function QuoteModal({ onClose, calcData, profile }) {
     sides = 1,
     process = 'Огтлоо',
     productName = 'Хэвлэл',
+    priceAt,
   } = calcData || {}
 
+  // Тоо ширхэг бүрийн үнийг dashboard-ын ЖИНХЭНЭ тооцоогоор (priceAt) гаргана
   function getPrice(q) {
-    const scale = Math.pow(q / (qty || 100), 0.82)
-    const cost = baseCost * scale
-    const withProfit = cost * (1 + profitPct / 100)
+    const withProfit = priceAt ? priceAt(q) : baseCost * (1 + profitPct / 100)
     const total = Math.round(withProfit)
     const unit = Math.round(total / q)
     const vat = Math.round(total * VAT)
@@ -35,7 +35,8 @@ export default function QuoteModal({ onClose, calcData, profile }) {
   const rows = QTYS.map(q => getPrice(q))
   const fmt = n => '₮' + Math.round(n).toLocaleString()
   const today = new Date().toLocaleDateString('mn-MN')
-  const quoteNum = '#QT-' + Date.now().toString().slice(-6)
+  // Цонх нээгдэх үед нэг удаа үүснэ — бичих бүрд солигдохгүй
+  const [quoteNum] = useState(() => '#QT-' + Date.now().toString().slice(-6))
 
   const s = {
     overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:100, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'20px', overflowY:'auto' },
