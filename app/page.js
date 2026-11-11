@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function Home() {
   const svgRef = useRef(null)
@@ -594,6 +595,13 @@ export default function Home() {
               <label className="field-label">Нууц үг</label>
               <input className="field-input" type="password" placeholder="••••••••"
                 value={password} onChange={e => setPassword(e.target.value)} required />
+              {!isSignUp && (
+                <div style={{ textAlign:'right', marginTop:-6, marginBottom:13 }}>
+                  <Link href="/reset-password" style={{ fontSize:12, color:'#4f46e5', textDecoration:'none', fontWeight:500 }}>
+                    Нууц үгээ мартсан уу?
+                  </Link>
+                </div>
+              )}
               {error && (
                 <div className={`error-box ${error.includes('шалгаад') ? 'success' : 'error'}`}>{error}</div>
               )}
