@@ -20,8 +20,9 @@ Supabase → **SQL Editor** дээр доорх хоёр файлыг дараа
 
 1. `supabase/migrations/20261110_base.sql` — профайл, тооцоо, санал хүсэлт, лого хадгалах сан (шинэ төсөл дээр л хэрэгтэй)
 2. `supabase/migrations/20261111_billing.sql` — Pro эрх, төлбөр, үнийн санал
+3. `supabase/migrations/20261114_price_settings.sql` — компанийн үнийн тохиргоо
 
-2026-11-14-нд `printcalc-pro` төсөл (`bgxoyvommdzeljcdgqyj`) дээр хоёуланг нь ажиллуулсан.
+2026-11-14-нд `printcalc-pro` төсөл (`bgxoyvommdzeljcdgqyj`) дээр эхний хоёрыг ажиллуулсан.
 Дахин ажиллуулахад аюулгүй.
 
 ### 2. Vercel — Environment Variables

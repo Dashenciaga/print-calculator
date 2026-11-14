@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import QuoteModal from '@/components/QuoteModal'
 import UpgradeModal from '@/components/UpgradeModal'
 import { bestLayout, calculateJob } from '@/lib/printCost'
-
-const CUT_COST = 20000 // Огтлоо — заавал
+import { normalizePrices, productRates } from '@/lib/priceSettings'
 
 const PRODUCTS = {
   poster:   { t:'Постер',         s:'Нэг талтай · Офсет хэвлэл',     dig:false, fold:0,   faces:1, side:1, sheet:'B3', plate:3850, press:40000, spa:5,  pw:364, ph:515 },
@@ -174,6 +173,11 @@ export default function Dashboard() {
   const [vHolio, setVHolio] = useState(0)
   const [vTigel, setVTigel] = useState(0)
   const [vUdees, setVUdees] = useState(0)
+  // Компанийн хадгалсан үнэ (Үнийн тохиргоо). Хадгалаагүй бол анхны утга.
+  const [prices, setPrices] = useState(() => normalizePrices(null))
+  const [pricesSaved, setPricesSaved] = useState(true)
+  const [paperId, setPaperId] = useState('default')
+  const curProdRef = useRef('poster')
   const [showQuote, setShowQuote] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [billing, setBilling] = useState(null) // { pro, expires_at, pending, ... } — серверээс
@@ -193,6 +197,15 @@ export default function Dashboard() {
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
       if (prof) setProfile(prof)
+      // Компанийн үнийн тохиргоо — байхгүй эсвэл алдаа гарвал анхны утгаар үргэлжилнэ
+      const { data: ps } = await supabase.from('price_settings').select('data').eq('user_id', user.id).maybeSingle()
+      const pr = normalizePrices(ps?.data)
+      setPrices(pr)
+      setPricesSaved(!!ps)
+      applyRates(curProdRef.current, pr)
+      setPaperId(pr.papers[0].id); setA0Price(pr.papers[0].price)
+      setVGlue(pr.glue); setVLak(pr.lak); setVHolio(pr.holio); setVTigel(pr.tigel); setVUdees(pr.udees)
+      setProfit(pr.profit)
       // Pro эрхийг серверээс шалгана
       const br = await fetch('/api/billing/status', { cache: 'no-store' }).catch(() => null)
       if (br?.ok) setBilling(await br.json())
@@ -211,7 +224,8 @@ export default function Dashboard() {
   // 1 хуудаст багтах тоо: хэвтээ, босоогийн аль ихийг нь (нэмэхгүй)
   const layout = useMemo(() => bestLayout(sheet.w, sheet.h, prodW, prodH), [sheet, prodW, prodH])
   const perSheet = perSheetManual ?? layout.perSheet
-  const vFold = vFoldManual ?? (p.fold > 0 ? qty * p.fold : 0)
+  const rates = useMemo(() => productRates(curProd, p, prices), [curProd, p, prices])
+  const vFold = vFoldManual ?? (rates.fold > 0 ? qty * rates.fold : 0)
 
   // Excel-ийн томьёогоор: J = E × G / H + F, K = J / I ...
   const jobInput = useMemo(() => ({
@@ -227,11 +241,11 @@ export default function Dashboard() {
     platePrice:     platePr,
     pressPrice:     pressPr,
     digitalPrice:   digPr,
-    finishingFixed: vGlue + vLak + vHolio + vTigel + vUdees + CUT_COST,
-    foldPerUnit:    p.fold,
+    finishingFixed: vGlue + vLak + vHolio + vTigel + vUdees + prices.cut,
+    foldPerUnit:    rates.fold,
     foldManual:     vFoldManual,
     profitPct:      profit,
-  }), [qty, qtyWaste, faces, p, sides, perSheet, spa, a0Price, platePr, pressPr, digPr, vGlue, vLak, vHolio, vTigel, vUdees, vFoldManual, profit])
+  }), [qty, qtyWaste, faces, p, sides, perSheet, spa, a0Price, platePr, pressPr, digPr, vGlue, vLak, vHolio, vTigel, vUdees, vFoldManual, profit, prices.cut, rates.fold])
 
   const { result, calcError } = useMemo(() => {
     try {
@@ -251,14 +265,29 @@ export default function Dashboard() {
     drawCanvas(cvVRef.current, sheet.h, sheet.w, prodW, prodH, layout.vertical)
   }, [sheet, prodW, prodH, layout, user])
 
+  // Бүтээгдэхүүний төрлөөс хамаарах тарифыг хадгалсан үнээс тавина
+  function applyRates(key, pr) {
+    const r = productRates(key, PRODUCTS[key], pr)
+    setPlatePr(r.plate)
+    setPressPr(r.press)
+    setQtyWaste(r.waste)
+    setDigPr(pr.digitalPrice)
+  }
+
+  function selectPaper(id) {
+    setPaperId(id)
+    const paper = prices.papers.find(x => x.id === id)
+    if (paper) setA0Price(paper.price)
+  }
+
   function selectProduct(key) {
     const p = PRODUCTS[key]
+    curProdRef.current = key
     setCurProd(key)
     setSides(p.side)
     setPrintSheet(p.sheet)
     setSpa(p.spa)
-    setPlatePr(p.plate)
-    setPressPr(p.press)
+    applyRates(key, prices)
     setProdW(p.pw)
     setProdH(p.ph)
     setFaces(p.faces)
@@ -316,6 +345,9 @@ export default function Dashboard() {
     } finally { setSaving(false) }
   }
 
+  // Хадгалсан ашгийн хувь 20/30/40-д байхгүй бол нэмж харуулна
+  const profitOptions = [...new Set([20, 30, 40, prices.profit])].sort((a, b) => a - b)
+
   const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
   if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'var(--app-font)'}}>Ачааллаж байна...</div>
@@ -363,6 +395,7 @@ export default function Dashboard() {
             </button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontWeight:500}} onClick={()=>{setSaveName('');setSaveMsg('');setShowSave(true)}}>💾 Хадгалах</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=> billing?.pro ? setShowQuote(true) : setShowUpgrade(true)}>{billing?.pro ? '📋 Үнийн санал' : '🔒 Үнийн санал'}</button>
+            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/prices')}>Үнийн тохиргоо</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
             <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
           </div>
@@ -370,6 +403,12 @@ export default function Dashboard() {
 
         <div style={S.body}>
           {calcError && <div style={S.err}>⚠ {calcError}. Бүтээгдэхүүний хэмжээ эсвэл «1 хуудаст» тоог шалгана уу.</div>}
+          {!pricesSaved && (
+            <div style={{...S.info,marginTop:0,display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+              <span>Одоо жишиг үнээр тооцож байна. Өөрийн компанийн цаас, төмөр, даралтын үнийг нэг удаа оруулаад хадгалаарай.</span>
+              <button style={S.linkBtn} onClick={()=>router.push('/prices')}>Үнээ оруулах →</button>
+            </div>
+          )}
           {/* ① ХЭВЛЭХ ЦААС */}
           <div>
             <div style={S.sectionLabel}>① Хэвлэх цаасны тохиргоо</div>
@@ -499,7 +538,14 @@ export default function Dashboard() {
             <div style={S.sectionLabel}>② A0 цаасны үнийн тохиргоо</div>
             <div style={S.grid2}>
               <div style={{...S.card,display:'flex',flexDirection:'column',gap:8}}>
-                <div style={S.field}><label style={S.label}>A0 нэгж үнэ (₮)</label><input type="number" style={S.input} value={a0Price} onFocus={e=>e.target.select()} onChange={e=>setA0Price(+e.target.value||0)}/></div>
+                <div style={S.field}>
+                  <label style={S.label}>Цаас</label>
+                  <select style={S.select} value={paperId} onChange={e=>selectPaper(e.target.value)}>
+                    {prices.papers.map(x => <option key={x.id} value={x.id}>{x.name} — ₮{x.price.toLocaleString()}</option>)}
+                    {paperId === '' && <option value="">Гараар оруулсан үнэ</option>}
+                  </select>
+                </div>
+                <div style={S.field}><label style={S.label}>A0 нэгж үнэ (₮)</label><input type="number" style={S.input} value={a0Price} onFocus={e=>e.target.select()} onChange={e=>{setA0Price(+e.target.value||0);setPaperId('')}}/></div>
                 <div style={S.fieldLast}><label style={S.label}>Нэг A0-аас хэдэн хуудас гарах</label><input type="number" style={S.input} value={spa} onFocus={e=>e.target.select()} onChange={e=>setSpa(+e.target.value||1)}/></div>
                 <div style={S.hint}>{printSheet === 'custom' ? 'Дурын' : printSheet} → нэг A0-аас {spa} ширхэг</div>
               </div>
@@ -524,7 +570,7 @@ export default function Dashboard() {
                     <div style={S.chkR}><input type="number" style={S.chkInp} value={val} onFocus={e=>e.target.select()} onChange={e=>setter(+e.target.value||0)}/><span style={{fontSize:10,color:'#94a3b8'}}>₮</span></div>
                   </div>
                 ))}
-                <div style={S.chkRow}><span style={S.chkL}>Огтлоо <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>{fmt(CUT_COST)}</span></div>
+                <div style={S.chkRow}><span style={S.chkL}>Огтлоо <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>{fmt(prices.cut)}</span></div>
               </div>
               <div style={S.card}>
                 {[['Цаасны зардал',result.paperCost],['Төмрийн зардал',result.plateCost],['Хэвлэлтийн даралт',result.pressCost],['Боловсруулалт',result.finishing]].map(([l,v])=>(
@@ -539,8 +585,8 @@ export default function Dashboard() {
                 </div>
                 <div style={S.sep}/>
                 <div style={{fontSize:10,color:'#94a3b8',fontWeight:500,letterSpacing:'.05em',textTransform:'uppercase',marginBottom:6}}>Ашгийн нэмэгдэл</div>
-                <div style={S.profitBtns}>
-                  {[20,30,40].map(n=>(
+                <div style={{...S.profitBtns,gridTemplateColumns:`repeat(${profitOptions.length},1fr)`}}>
+                  {profitOptions.map(n=>(
                     <button key={n} style={S.profitBtn(profit===n)} onClick={()=>setProfit(n)}>+{n}%</button>
                   ))}
                 </div>
