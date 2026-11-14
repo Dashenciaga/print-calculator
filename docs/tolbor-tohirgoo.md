@@ -43,7 +43,8 @@ Vercel → print-calculator → **Settings → Environment Variables** (Producti
 | `SMTP_PASS` | (App password) | Gmail → Google Account → Security → 2-Step Verification → **App passwords** |
 | `MAIL_FROM` | you@gmail.com | Илгээгчийн хаяг (Gmail бол SMTP_USER-тэй ижил) |
 
-`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` аль хэдийн байгаа.
+Өгөгдлийн сангийн хаяг, нийтийн түлхүүр `lib/publicConfig.js`-д байгаа тул Vercel-д оруулах шаардлагагүй. Хуучин `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` ашиглагдахгүй болсон, устгаж болно.
+`SUPABASE_SERVICE_ROLE_KEY`-г шинэ төслийн (`printcalc-pro`) `service_role` түлхүүрээр **солих шаардлагатай**. Солихгүй бол төлбөр, үнийн санал, админ хуудас ажиллахгүй.
 Хувьсагч нэмсний дараа **Redeploy** хийнэ.
 
 И-мэйл үйлчлүүлэгч рүү «Компанийн нэр (PrintCalc)» нэрээр очно. Хариу бичвэл профайлын «Холбоо барих и-мэйл» рүү очно.

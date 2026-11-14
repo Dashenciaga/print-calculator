@@ -135,7 +135,7 @@ export default function Home() {
     setError('')
     const supabase = createClient()
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
       if (error) setError(error.message)
       else setError('И-мэйлээ шалгаад баталгаажуулаарай!')
     } else {
