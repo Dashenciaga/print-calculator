@@ -16,7 +16,12 @@ Pro эрхийг **зөвхөн сервер** өгнө. Хэрэглэгч бр
 
 ### 1. Supabase — SQL
 
-Supabase → **SQL Editor** → `supabase/migrations/20261111_billing.sql` файлын агуулгыг бүхэлд нь хуулж → **Run**.
+Supabase → **SQL Editor** дээр доорх хоёр файлыг дарааллаар нь бүхэлд нь хуулж → **Run**:
+
+1. `supabase/migrations/20261110_base.sql` — профайл, тооцоо, санал хүсэлт, лого хадгалах сан (шинэ төсөл дээр л хэрэгтэй)
+2. `supabase/migrations/20261111_billing.sql` — Pro эрх, төлбөр, үнийн санал
+
+2026-11-14-нд `printcalc-pro` төсөл (`bgxoyvommdzeljcdgqyj`) дээр хоёуланг нь ажиллуулсан.
 Дахин ажиллуулахад аюулгүй.
 
 ### 2. Vercel — Environment Variables
