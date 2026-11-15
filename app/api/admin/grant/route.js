@@ -1,51 +1,37 @@
-import { NextResponse } from 'next/server'
-import { createClient as adminClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { adminDb, getUser, isAdmin, json, fail, serverError, readJson } from '@/lib/server/auth'
+import { extendExpiry, isProActive, PRO_MONTHS } from '@/lib/billing'
 
+export const dynamic = 'force-dynamic'
+
+// Админ гараар Pro эрх өгөх / хасах (төлбөрийн хүсэлтгүйгээр)
 export async function POST(request) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      { cookies: { getAll: () => cookieStore.getAll() } }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-      return NextResponse.json({ error: 'Хандах эрхгүй' }, { status: 403 })
+    const user = await getUser()
+    if (!isAdmin(user)) return fail(403, 'Хандах эрхгүй')
+
+    const body = await readJson(request)
+    const target = typeof body?.target_user_id === 'string' ? body.target_user_id : ''
+    const action = body?.action
+    if (!/^[0-9a-f-]{36}$/i.test(target) || !['grant', 'revoke'].includes(action)) {
+      return fail(400, 'Буруу параметр')
     }
 
-    const { target_user_id, action } = await request.json()
-    if (!target_user_id || !['grant', 'revoke'].includes(action)) {
-      return NextResponse.json({ error: 'Буруу параметр' }, { status: 400 })
-    }
-
-    const admin = adminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
+    const db = adminDb()
+    let row
     if (action === 'grant') {
-      const expiresAt = new Date()
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1)
-      await admin.from('subscriptions').upsert({
-        user_id:    target_user_id,
-        plan:       'pro',
-        expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' })
+      const { data: sub } = await db.from('subscriptions').select('plan, expires_at').eq('user_id', target).maybeSingle()
+      const expires = extendExpiry(isProActive(sub) ? sub.expires_at : null, PRO_MONTHS)
+      row = { user_id: target, plan: 'pro', expires_at: expires.toISOString() }
     } else {
-      await admin.from('subscriptions').upsert({
-        user_id:    target_user_id,
-        plan:       'free',
-        expires_at: null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' })
+      row = { user_id: target, plan: 'free', expires_at: null }
     }
 
-    return NextResponse.json({ ok: true })
+    const { error } = await db.from('subscriptions')
+      .upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    if (error) throw error
+
+    return json({ ok: true, ...row })
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    return serverError('admin/grant', e)
   }
 }

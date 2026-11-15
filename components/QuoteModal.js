@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 
 const QTYS = [100, 200, 300, 400, 500]
 const VAT = 0.10
@@ -18,12 +19,12 @@ export default function QuoteModal({ onClose, calcData, profile }) {
     sides = 1,
     process = 'Огтлоо',
     productName = 'Хэвлэл',
+    priceAt,
   } = calcData || {}
 
+  // Тоо ширхэг бүрийн үнийг dashboard-ын ЖИНХЭНЭ тооцоогоор (priceAt) гаргана
   function getPrice(q) {
-    const scale = Math.pow(q / (qty || 100), 0.82)
-    const cost = baseCost * scale
-    const withProfit = cost * (1 + profitPct / 100)
+    const withProfit = priceAt ? priceAt(q) : baseCost * (1 + profitPct / 100)
     const total = Math.round(withProfit)
     const unit = Math.round(total / q)
     const vat = Math.round(total * VAT)
@@ -35,16 +36,26 @@ export default function QuoteModal({ onClose, calcData, profile }) {
   const rows = QTYS.map(q => getPrice(q))
   const fmt = n => '₮' + Math.round(n).toLocaleString()
   const today = new Date().toLocaleDateString('mn-MN')
-  const quoteNum = '#QT-' + Date.now().toString().slice(-6)
+  // Дугаарыг сервер олгоно (давхцахгүй, хадгалагдана)
+  const [quote, setQuote]       = useState(null)
+  const [busy, setBusy]         = useState('')
+  const [err, setErr]           = useState('')
+  const [sentMsg, setSentMsg]   = useState('')
+  const [showMail, setShowMail] = useState(false)
+  const [mailTo, setMailTo]     = useState('')
+  const [mailMsg, setMailMsg]   = useState('')
 
   const s = {
     overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:100, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'20px', overflowY:'auto' },
-    modal: { background:'white', borderRadius:12, border:'0.5px solid #e2e8f0', width:'100%', maxWidth:640, fontFamily:'system-ui,-apple-system,sans-serif', marginTop:20 },
+    modal: { background:'white', borderRadius:12, border:'0.5px solid #e2e8f0', width:'100%', maxWidth:640, fontFamily:'var(--app-font)', marginTop:20 },
     top: { padding:'11px 16px', borderBottom:'0.5px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:20, background:'white', zIndex:2, borderRadius:'12px 12px 0 0' },
     topTitle: { fontSize:13, fontWeight:500, color:'#1a1f36' },
     actions: { display:'flex', gap:6 },
     btnOut: { padding:'5px 11px', fontSize:11, border:'0.5px solid #e2e8f0', borderRadius:8, background:'none', color:'#64748b', cursor:'pointer' },
     btnPri: { padding:'5px 13px', fontSize:11, border:'none', borderRadius:8, background:'#4f46e5', color:'white', cursor:'pointer', fontWeight:500 },
+    mailBox: { padding:'10px 16px', borderBottom:'0.5px solid #e2e8f0', background:'#f8f9fb' },
+    errBar: { padding:'8px 16px', fontSize:11, background:'#fef2f2', color:'#b91c1c', borderBottom:'0.5px solid #fecaca' },
+    okBar: { padding:'8px 16px', fontSize:11, background:'#f0fdf4', color:'#166534', borderBottom:'0.5px solid #bbf7d0' },
     qp: { padding:'22px 26px' },
     hdr: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16, paddingBottom:14, borderBottom:'0.5px solid #e2e8f0' },
     logoRow: { display:'flex', alignItems:'center', gap:8 },
@@ -80,35 +91,10 @@ export default function QuoteModal({ onClose, calcData, profile }) {
     wmName: { fontSize:9, fontWeight:500, color:'#1a1f36' },
   }
 
-  function openPrintWindow() {
+  // Хэвлэх талбарын хуулбар (input-уудыг энгийн текст болгоно)
+  function cloneArea() {
     const el = document.getElementById('quotePrintArea')
-    if (!el) return
-    const clone = el.cloneNode(true)
-    clone.querySelectorAll('input').forEach(inp => {
-      const span = document.createElement('div')
-      span.textContent = inp.value || '—'
-      span.style.cssText = 'padding:4px 7px;font-size:11px;color:#1a1f36;margin-bottom:4px;'
-      inp.replaceWith(span)
-    })
-    const win = window.open('', '_blank', 'width=900,height=720')
-    if (!win) { alert('Поп-ап нээгдсэнгүй. Хөтчийн тохиргоог шалгана уу.'); return }
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>${quoteNum} — Үнийн санал</title>
-<style>
-  body{font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;margin:0;padding:24px;}
-  table{border-collapse:collapse;}
-  @media print{body{padding:0;} @page{margin:1cm;}}
-</style></head><body>${clone.outerHTML}
-<script>window.onload=function(){setTimeout(function(){window.print();},150)}<\/script>
-</body></html>`)
-    win.document.close()
-  }
-
-  function handlePrint() { openPrintWindow() }
-
-  async function handlePDF() {
-    const el = document.getElementById('quotePrintArea')
-    if (!el) return
+    if (!el) return null
     const clone = el.cloneNode(true)
     clone.querySelectorAll('input').forEach(inp => {
       const div = document.createElement('div')
@@ -116,25 +102,113 @@ export default function QuoteModal({ onClose, calcData, profile }) {
       div.style.cssText = 'padding:4px 7px;font-size:11px;color:#1a1f36;margin-bottom:4px;'
       inp.replaceWith(div)
     })
-    clone.style.cssText = 'background:white;padding:24px;font-family:system-ui,-apple-system,sans-serif;color:#1a1f36;width:760px;'
+    return clone
+  }
 
+  // Серверээс давхцахгүй дугаар авна (Pro эрхийг сервер шалгана). Нэг цонхонд нэг л удаа.
+  async function ensureQuote() {
+    if (quote) return quote
+    setErr('')
+    const r = await fetch('/api/quotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_name: clientName, client_contact: clientContact,
+        product: productName, qty, total: main.total, vat_total: main.vatTotal,
+        data: { printSheet, prodW, prodH, sides, process, profitPct, rows: rows.map(({ q, total }) => ({ q, total })) },
+      }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { setErr(d.error || 'Үнийн санал үүсгэж чадсангүй'); return null }
+    // Дугаар DOM-д шууд орох ёстой (PDF/хэвлэхэд хуулбарлана)
+    flushSync(() => setQuote(d.quote))
+    return d.quote
+  }
+
+  async function handlePrint() {
+    // Поп-ап хориглогдохгүйн тулд цонхыг товч дармагц нээнэ
+    const win = window.open('', '_blank', 'width=900,height=720')
+    if (!win) { setErr('Поп-ап нээгдсэнгүй. Хөтчийн тохиргоог шалгана уу.'); return }
+    setBusy('print')
+    try {
+      const q = await ensureQuote()
+      if (!q) { win.close(); return }
+      const clone = cloneArea()
+      // Сайтын фонт (Cera Pro) хэвлэх цонхонд ч ажиллахын тулд CSS-ийг хуулна
+      const pageStyles = [...document.querySelectorAll('link[rel="stylesheet"], style')]
+        .map(el => el.outerHTML).join('\n')
+      win.document.write(`<!DOCTYPE html><html class="${document.documentElement.className}"><head><meta charset="utf-8">
+<base href="${window.location.origin}/">
+<title>${q.number} — Үнийн санал</title>
+${pageStyles}
+<style>
+  body{font-family:var(--app-font);color:#1a1f36;margin:0;padding:24px;}
+  table{border-collapse:collapse;}
+  @media print{body{padding:0;} @page{margin:1cm;}}
+</style></head><body>${clone.outerHTML}
+<script>window.onload=function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print();},150)})}<\/script>
+</body></html>`)
+      win.document.close()
+    } finally { setBusy('') }
+  }
+
+  // PDF үүсгэнэ: mode = 'save' (татах) эсвэл 'blob' (и-мэйлд хавсаргах)
+  async function makePdf(q, mode) {
+    const clone = cloneArea()
+    if (!clone) return null
+    clone.style.cssText = 'background:white;padding:24px;font-family:var(--app-font);color:#1a1f36;width:760px;'
     const wrap = document.createElement('div')
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;'
     wrap.appendChild(clone)
     document.body.appendChild(wrap)
-
     try {
+      await document.fonts?.ready
       const html2pdf = (await import('html2pdf.js')).default
-      await html2pdf().set({
+      const worker = html2pdf().set({
         margin: 10,
-        filename: `${quoteNum}-${(clientName || 'quote').replace(/[^\wЀ-ӿ]+/g, '_')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        filename: `${q.number}-${(clientName || 'quote').replace(/[^\wЀ-ӿ]+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: mode === 'blob' ? 0.88 : 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(clone).save()
+      }).from(clone)
+      return mode === 'blob' ? await worker.outputPdf('blob') : await worker.save()
     } finally {
       document.body.removeChild(wrap)
     }
+  }
+
+  async function handlePDF() {
+    setBusy('pdf')
+    try {
+      const q = await ensureQuote()
+      if (q) await makePdf(q, 'save')
+    } catch (e) { setErr('PDF үүсгэж чадсангүй: ' + e.message) } finally { setBusy('') }
+  }
+
+  async function handleSend(e) {
+    e.preventDefault()
+    setErr(''); setSentMsg('')
+    setBusy('send')
+    try {
+      const q = await ensureQuote()
+      if (!q) return
+      const blob = await makePdf(q, 'blob')
+      const pdf = await new Promise((resolve, reject) => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(String(fr.result).split(',')[1])
+        fr.onerror = () => reject(fr.error)
+        fr.readAsDataURL(blob)
+      })
+      const r = await fetch(`/api/quotes/${q.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: mailTo.trim(), message: mailMsg, pdf }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(d.error || 'И-мэйл илгээж чадсангүй'); return }
+      setSentMsg(`✓ ${mailTo.trim()} хаяг руу илгээлээ`)
+      setShowMail(false)
+    } catch (e2) { setErr('Алдаа: ' + e2.message) } finally { setBusy('') }
   }
 
   const coName = profile?.company_name || 'Компанийн нэр'
@@ -152,10 +226,25 @@ export default function QuoteModal({ onClose, calcData, profile }) {
           <span style={s.topTitle}>Үнийн санал үүсгэх</span>
           <div style={s.actions}>
             <button style={s.btnOut} onClick={onClose}>✕ Хаах</button>
-            <button style={s.btnOut} onClick={handlePrint}>🖨 Хэвлэх</button>
-            <button style={s.btnPri} onClick={handlePDF}>⬇ PDF татах</button>
+            <button style={s.btnOut} onClick={handlePrint} disabled={!!busy}>{busy==='print' ? '...' : '🖨 Хэвлэх'}</button>
+            <button style={s.btnOut} onClick={()=>{ setShowMail(v=>!v); if (!mailTo && /@/.test(clientContact)) setMailTo(clientContact.trim()) }} disabled={!!busy}>✉ И-мэйлээр илгээх</button>
+            <button style={s.btnPri} onClick={handlePDF} disabled={!!busy}>{busy==='pdf' ? 'Үүсгэж байна...' : '⬇ PDF татах'}</button>
           </div>
         </div>
+        {showMail && (
+          <form onSubmit={handleSend} style={s.mailBox}>
+            <input style={{...s.input, marginBottom:6}} type="email" required placeholder="Хүлээн авагчийн и-мэйл"
+              value={mailTo} onChange={e=>setMailTo(e.target.value)}/>
+            <textarea style={{...s.input, minHeight:60, resize:'vertical', marginBottom:6}} placeholder="Нэмэлт зурвас (заавал биш)"
+              value={mailMsg} onChange={e=>setMailMsg(e.target.value)} maxLength={2000}/>
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+              <button type="button" style={s.btnOut} onClick={()=>setShowMail(false)}>Болих</button>
+              <button type="submit" style={s.btnPri} disabled={!!busy}>{busy==='send' ? 'Илгээж байна...' : 'PDF хавсаргаж илгээх'}</button>
+            </div>
+          </form>
+        )}
+        {err && <div style={s.errBar}>{err}</div>}
+        {sentMsg && <div style={s.okBar}>{sentMsg}</div>}
 
         <div style={s.qp} id="quotePrintArea">
           {/* HEADER */}
@@ -187,7 +276,7 @@ export default function QuoteModal({ onClose, calcData, profile }) {
             </div>
             <div>
               <div style={s.metaTitle}>Үнийн санал</div>
-              <div style={s.metaSub}>{quoteNum}<br/>{today}</div>
+              <div style={s.metaSub}>{quote ? quote.number : 'Дугаар: хадгалахад олгоно'}<br/>{today}</div>
             </div>
           </div>
 

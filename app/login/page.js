@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -18,7 +19,7 @@ export default function Login() {
     setError('')
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
       if (error) setError(error.message)
       else setError('И-мэйлээ шалгаад баталгаажуулаарай!')
     } else {
@@ -59,6 +60,11 @@ export default function Login() {
               placeholder="••••••••"
               required
             />
+            {!isSignUp && (
+              <Link href="/reset-password" className="block text-right text-xs text-violet-400 hover:text-violet-300 mt-2">
+                Нууц үгээ мартсан уу?
+              </Link>
+            )}
           </div>
 
           {error && (

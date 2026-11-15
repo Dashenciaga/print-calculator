@@ -1,8 +1,11 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import QuoteModal from '@/components/QuoteModal'
+import UpgradeModal from '@/components/UpgradeModal'
+import { bestLayout, calculateJob } from '@/lib/printCost'
+import { normalizePrices, productRates } from '@/lib/priceSettings'
 
 const PRODUCTS = {
   poster:   { t:'Постер',         s:'Нэг талтай · Офсет хэвлэл',     dig:false, fold:0,   faces:1, side:1, sheet:'B3', plate:3850, press:40000, spa:5,  pw:364, ph:515 },
@@ -32,113 +35,111 @@ const PRESETS = [
   { id:'cust',w:0,   h:0,   label:'✎ Дурын',  sub:''        },
 ]
 
-function drawCanvas(canvas, sheetW, sheetH, itemW, itemH) {
-  if (!canvas) return 0
+// Зөвхөн зурна. Тоог bestLayout()-аас авна — canvas-ын пикселээр тоолохгүй.
+function drawCanvas(canvas, sheetW, sheetH, itemW, itemH, grid) {
+  if (!canvas) return
   const ctx = canvas.getContext('2d')
   const CW = canvas.width, CH = canvas.height, pad = 5
   ctx.clearRect(0, 0, CW, CH)
+  if (!(sheetW > 0 && sheetH > 0)) return
   const sc = Math.min((CW - pad*2) / sheetW, (CH - pad*2) / sheetH)
   const sW = Math.round(sheetW * sc), sH = Math.round(sheetH * sc)
   const ox = Math.round((CW - sW) / 2), oy = Math.round((CH - sH) / 2)
-  const dk = window.matchMedia('(prefers-color-scheme:dark)').matches
+  const dk = false // хуудас цайвар дэвсгэртэй тул зураг ч цайвар
   ctx.fillStyle = dk ? '#1e1e2e' : '#f8f9fb'
   ctx.strokeStyle = dk ? 'rgba(79,70,229,.6)' : '#c7d2fe'
   ctx.lineWidth = 1
   ctx.beginPath(); ctx.roundRect(ox, oy, sW, sH, 2); ctx.fill(); ctx.stroke()
-  const siW = Math.max(1, Math.round(itemW * sc))
-  const siH = Math.max(1, Math.round(itemH * sc))
-  const cols = Math.floor(sheetW / itemW)
-  const rows = Math.floor(sheetH / itemH)
-  const gap = Math.max(1, Math.round(sc))
   let n = 0
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = ox + c * (siW + gap), y = oy + r * (siH + gap)
-      if (x + siW > ox + sW || y + siH > oy + sH) continue
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      const x0 = ox + Math.round(c * itemW * sc), x1 = ox + Math.round((c + 1) * itemW * sc)
+      const y0 = oy + Math.round(r * itemH * sc), y1 = oy + Math.round((r + 1) * itemH * sc)
+      const w = Math.max(1, x1 - x0 - 1), h = Math.max(1, y1 - y0 - 1)
       ctx.fillStyle = dk ? 'rgba(79,70,229,.22)' : '#eef2ff'
       ctx.strokeStyle = dk ? 'rgba(129,140,248,.6)' : '#a5b4fc'
       ctx.lineWidth = 0.5
-      ctx.beginPath(); ctx.roundRect(x, y, siW, siH, 1); ctx.fill(); ctx.stroke()
+      ctx.beginPath(); ctx.roundRect(x0, y0, w, h, 1); ctx.fill(); ctx.stroke()
       n++
-      if (siW > 11 && siH > 8) {
+      if (w > 11 && h > 8) {
         ctx.fillStyle = dk ? '#a5b4fc' : '#4f46e5'
-        ctx.font = `${Math.max(6, Math.min(9, siW / 3))}px system-ui`
+        ctx.font = `${Math.max(6, Math.min(9, w / 3))}px ${getComputedStyle(canvas).fontFamily}`
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText(n, x + siW / 2, y + siH / 2)
+        ctx.fillText(n, x0 + w / 2, y0 + h / 2)
       }
     }
   }
-  return n
 }
 
 const fmt = n => '₮' + Math.round(n).toLocaleString()
+// Хуудасны тоо: бүхэл бол бүхлээр, бутархай бол 1 оронтой
+const fmtN = n => n == null || !isFinite(n) ? '—'
+  : n.toLocaleString(undefined, { maximumFractionDigits: Number.isInteger(n) ? 0 : 1 })
+const CSS = `
+.pc-grid { display: flex; gap: 20px; align-items: flex-start; }
+.pc-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.pc-aside { flex: 0 0 380px; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; }
+.pc-bar { display: none; }
+.pc-chip:focus-visible, .pc-btn:focus-visible, .pc-in:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+.pc-in:focus { border-color: #4f46e5; }
+@media (max-width: 900px) {
+  .pc-grid { flex-direction: column; }
+  .pc-aside { flex: 1 1 auto; width: 100%; position: static; }
+  .pc-body { padding-bottom: 96px !important; }
+  .pc-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: white;
+    border-top: 1px solid #e2e8f0; padding: 10px 16px 14px; align-items: center; justify-content: space-between; gap: 12px; }
+  .pc-hide-sm { display: none !important; }
+}
+`
+
+const C = { ink: '#1a1f36', mute: '#475569', line: '#e2e8f0', lineStrong: '#cbd5e1', brand: '#4f46e5', brandInk: '#3730a3', brandBg: '#eef2ff', soft: '#f8f9fb', good: '#15803d' }
 
 const S = {
-  shell: { display:'flex', height:'100vh', background:'#f4f5f7', fontFamily:'system-ui,-apple-system,sans-serif', overflow:'hidden' },
-  sidebar: { width:180, background:'white', borderRight:'0.5px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, overflowY:'auto' },
-  sbHead: { padding:'12px 14px 8px', borderBottom:'0.5px solid #e2e8f0' },
-  sbLabel: { fontSize:11, color:'#94a3b8', letterSpacing:'.05em', textTransform:'uppercase' },
-  sbItem: (active) => ({ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', cursor:'pointer', border:'none', background: active ? 'white' : 'none', width:'100%', textAlign:'left', fontSize:13, color: active ? '#1a1f36' : '#64748b', borderLeft: active ? '2px solid #4f46e5' : '2px solid transparent', fontWeight: active ? 500 : 400, transition:'background .1s' }),
-  sbDiv: { height:'0.5px', background:'#e2e8f0', margin:'4px 14px' },
-  main: { flex:1, display:'flex', flexDirection:'column', overflow:'hidden' },
-  topbar: { padding:'10px 16px', borderBottom:'0.5px solid #e2e8f0', background:'white', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 },
-  body: { flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 },
-  sectionLabel: { fontSize:10, fontWeight:500, color:'#94a3b8', letterSpacing:'.07em', textTransform:'uppercase', marginBottom:6 },
-  card: { background:'white', border:'0.5px solid #e2e8f0', borderRadius:12, padding:14 },
-  grid2: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 },
-  grid3: { display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 },
-  grid4: { display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:8 },
-  field: { display:'flex', flexDirection:'column', gap:4, marginBottom:8 },
-  fieldLast: { display:'flex', flexDirection:'column', gap:4 },
-  label: { fontSize:11, color:'#64748b' },
-  input: { width:'100%', padding:'6px 9px', fontSize:12, border:'0.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', boxSizing:'border-box' },
-  select: { width:'100%', padding:'6px 9px', fontSize:12, border:'0.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', boxSizing:'border-box' },
-  tgl: { display:'flex', gap:2, background:'#f1f5f9', borderRadius:8, padding:2 },
-  tglB: (on) => ({ flex:1, padding:'5px 4px', fontSize:11, border:'none', background: on ? 'white' : 'none', borderRadius:6, cursor:'pointer', color: on ? '#1a1f36' : '#64748b', fontWeight: on ? 500 : 400, boxShadow: on ? '0 0 0 0.5px #e2e8f0' : 'none', transition:'all .1s' }),
-  presetGrid: { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4, marginBottom:8 },
-  presetBtn: (on) => ({ padding:'5px 3px', fontSize:10, border: on ? '0.5px solid #a5b4fc' : '0.5px solid #e2e8f0', borderRadius:8, background: on ? '#eef2ff' : '#f8f9fb', cursor:'pointer', color: on ? '#4f46e5' : '#64748b', textAlign:'center', lineHeight:1.4, fontWeight: on ? 500 : 400 }),
-  metric: { background:'#f8f9fb', borderRadius:8, padding:'10px 12px' },
-  metricLabel: { fontSize:10, color:'#64748b', marginBottom:4 },
-  metricVal: { fontSize:20, fontWeight:500, color:'#1a1f36', lineHeight:1 },
-  metricUnit: { fontSize:10, color:'#94a3b8', marginLeft:2 },
-  visBox: { background:'#f8f9fb', borderRadius:8, padding:10, display:'flex', gap:16, alignItems:'center', justifyContent:'center' },
-  canvasCol: { display:'flex', flexDirection:'column', alignItems:'center', gap:4 },
-  cvLabel: { fontSize:10, color:'#94a3b8', display:'flex', alignItems:'center', gap:4 },
-  cvBadge: { fontSize:9, padding:'1px 6px', borderRadius:10, background:'#eef2ff', color:'#4f46e5', fontWeight:500 },
-  flow: { display:'flex', alignItems:'center', gap:6, background:'#f8f9fb', borderRadius:8, padding:'8px 12px', flexWrap:'wrap' },
-  flItem: { display:'flex', flexDirection:'column', alignItems:'center', gap:1 },
-  flVal: { fontSize:12, fontWeight:500, color:'#1a1f36' },
-  flLbl: { fontSize:10, color:'#94a3b8' },
-  flArr: { fontSize:12, color:'#94a3b8', margin:'0 2px' },
-  brRow: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'0.5px solid #f1f5f9', fontSize:12 },
-  brL: { color:'#64748b' },
-  brV: { fontWeight:500, color:'#1a1f36' },
-  total: { background:'#eff6ff', borderRadius:8, padding:'10px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 },
-  totalGreen: { background:'#f0fdf4', borderRadius:8, padding:'10px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 },
-  totalL: { fontSize:12, fontWeight:500, color:'#3b82f6' },
-  totalLG: { fontSize:12, fontWeight:500, color:'#16a34a' },
-  totalV: { fontSize:18, fontWeight:500, color:'#3b82f6' },
-  totalVG: { fontSize:18, fontWeight:500, color:'#16a34a' },
-  profitBtns: { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, marginTop:8 },
-  profitBtn: (on) => ({ padding:6, fontSize:11, border: on ? 'none' : '0.5px solid #e2e8f0', borderRadius:8, background: on ? '#eff6ff' : '#f8f9fb', cursor:'pointer', color: on ? '#3b82f6' : '#64748b', fontWeight: on ? 500 : 400 }),
-  sep: { height:'0.5px', background:'#e2e8f0', margin:'8px 0' },
-  chkRow: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0', fontSize:11 },
-  chkL: { color:'#64748b', display:'flex', alignItems:'center', gap:5 },
-  chkR: { display:'flex', alignItems:'center', gap:4 },
-  chkInp: { width:62, padding:'3px 7px', fontSize:11, border:'0.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', textAlign:'right' },
-  badge: (type) => ({ fontSize:9, padding:'1px 6px', borderRadius:20, fontWeight:500, background: type==='req' ? '#f0fdf4' : '#fefce8', color: type==='req' ? '#16a34a' : '#ca8a04' }),
-  qtyBox: { background:'#f8f9fb', borderRadius:8, padding:'10px 12px' },
-  qtyRow: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'3px 0', fontSize:12 },
-  qtyLbl: { color:'#64748b' },
-  qtyInp: { width:72, padding:'4px 8px', fontSize:12, border:'0.5px solid #e2e8f0', borderRadius:8, background:'white', color:'#1a1f36', outline:'none', textAlign:'right' },
-  qtyTotal: { display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:6, paddingTop:6, borderTop:'0.5px solid #e2e8f0' },
-  info: { background:'#eff6ff', borderRadius:8, padding:'6px 10px', fontSize:11, color:'#3b82f6', marginTop:6 },
-  hint: { fontSize:11, color:'#94a3b8', marginTop:3 },
-  sbUser: { display:'flex', alignItems:'center', gap:8, padding:'12px 14px', borderTop:'0.5px solid #e2e8f0', marginTop:'auto' },
-  sbAvatar: { width:28, height:28, borderRadius:'50%', background:'#4f46e5', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:500, flexShrink:0 },
-  sbUname: { fontSize:12, fontWeight:500, color:'#1a1f36' },
-  sbEmail: { fontSize:10, color:'#94a3b8' },
+  page: { minHeight: '100vh', background: '#f4f5f7', fontFamily: 'var(--app-font)', color: C.ink },
+  header: { background: 'white', borderBottom: `1px solid ${C.line}`, padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+  brand: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
+  avatar: { width: 30, height: 30, borderRadius: 8, background: C.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 700, flexShrink: 0, overflow: 'hidden' },
+  nav: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  navBtn: { fontFamily: 'inherit', fontSize: 13, fontWeight: 600, minHeight: 40, padding: '0 14px', borderRadius: 10, border: `1px solid ${C.line}`, background: 'white', color: C.ink, cursor: 'pointer' },
+  proBtn: pro => ({ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, minHeight: 40, padding: '0 14px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${pro ? '#fcd34d' : '#c7d2fe'}`, background: pro ? '#fffbeb' : C.brandBg, color: pro ? '#92400e' : C.brandInk }),
+  body: { maxWidth: 1280, margin: '0 auto', padding: '20px 24px 40px', boxSizing: 'border-box' },
+  h1: { margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-.3px' },
+  lead: { margin: '4px 0 0', fontSize: 14, color: C.mute },
+  card: { background: 'white', border: `1px solid ${C.line}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 },
+  stepHead: { display: 'flex', alignItems: 'center', gap: 10 },
+  stepNum: { width: 26, height: 26, borderRadius: 13, background: C.brand, color: 'white', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  h2: { margin: 0, fontSize: 16, fontWeight: 700 },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  chip: on => ({ fontFamily: 'inherit', fontSize: 13, fontWeight: on ? 700 : 600, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', border: on ? `2px solid ${C.brand}` : `1px solid ${C.line}`, background: on ? C.brandBg : C.soft, color: on ? C.brandInk : C.ink }),
+  row: { display: 'flex', flexWrap: 'wrap', gap: 14 },
+  field: flex => ({ flex, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }),
+  label: { fontSize: 13, fontWeight: 600, color: C.mute },
+  input: { fontFamily: 'inherit', fontSize: 15, minHeight: 46, padding: '0 12px', borderRadius: 10, border: `1px solid ${C.lineStrong}`, background: 'white', color: C.ink, boxSizing: 'border-box', width: '100%', outline: 'none' },
+  seg: { display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3 },
+  segBtn: on => ({ flex: 1, fontFamily: 'inherit', fontSize: 13, fontWeight: on ? 700 : 600, minHeight: 40, borderRadius: 8, cursor: 'pointer', border: on ? `1px solid ${C.line}` : '1px solid transparent', background: on ? 'white' : 'transparent', color: on ? C.ink : C.mute }),
+  hint: { fontSize: 12, color: C.mute },
+  finRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '6px 0' },
+  finInput: { fontFamily: 'inherit', fontSize: 14, fontWeight: 600, width: 130, minHeight: 40, padding: '0 10px', borderRadius: 8, border: `1px solid ${C.lineStrong}`, textAlign: 'right', color: C.ink, boxSizing: 'border-box', outline: 'none' },
+  advBtn: { fontFamily: 'inherit', textAlign: 'left', background: 'white', border: `1px dashed ${C.lineStrong}`, borderRadius: 14, padding: '12px 20px', minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, color: C.ink, cursor: 'pointer', width: '100%' },
+  linkBtn: { border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: C.brand, cursor: 'pointer', textDecoration: 'underline' },
+  asideHead: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  preview: { background: C.soft, borderRadius: 10, padding: 14, display: 'flex', justifyContent: 'center' },
+  metrics: { display: 'flex', gap: 8 },
+  metric: { flex: 1, background: C.soft, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 2 },
+  metricVal: { fontSize: 16, fontWeight: 700 },
+  price: { fontSize: 34, fontWeight: 700, letterSpacing: '-.5px', color: C.good, lineHeight: 1.1 },
+  dl: { margin: 0, display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
+  dRow: { display: 'flex', justifyContent: 'space-between', fontSize: 14 },
+  dTotal: { display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${C.line}`, paddingTop: 8 },
+  primary: { fontFamily: 'inherit', fontSize: 15, fontWeight: 700, minHeight: 48, borderRadius: 10, border: 'none', background: C.brand, color: 'white', cursor: 'pointer', padding: '0 18px' },
+  secondary: { fontFamily: 'inherit', fontSize: 14, fontWeight: 600, minHeight: 44, borderRadius: 10, border: `1px solid ${C.lineStrong}`, background: 'white', color: C.ink, cursor: 'pointer' },
+  info: { background: '#eff6ff', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
+  err: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#b91c1c' },
 }
+
+const FINISH = [
+  ['lak', 'Лак'], ['holio', 'Холио'], ['tigel', 'Тигель'], ['glue', 'Бүрэлт'], ['udees', 'Үдээс'],
+]
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -153,7 +154,7 @@ export default function Dashboard() {
   const [prodW, setProdW] = useState(364)
   const [prodH, setProdH] = useState(515)
   const [qty, setQty] = useState(100)
-  const [qtySheet, setQtySheet] = useState(100)
+  const [perSheetManual, setPerSheetManual] = useState(null) // null = автоматаар
   const [qtyWaste, setQtyWaste] = useState(100)
   const [spa, setSpa] = useState(5)
   const [a0Price, setA0Price] = useState(1200)
@@ -161,20 +162,25 @@ export default function Dashboard() {
   const [pressPr, setPressPr] = useState(40000)
   const [digPr, setDigPr] = useState(1500)
   const [faces, setFaces] = useState(1)
-  const [vGlue, setVGlue] = useState(0)
-  const [vFold, setVFold] = useState(0)
-  const [vLak, setVLak] = useState(0)
-  const [vHolio, setVHolio] = useState(0)
-  const [vTigel, setVTigel] = useState(0)
-  const [vUdees, setVUdees] = useState(0)
-  const [result, setResult] = useState({})
+  // Боловсруулалт: null = сонгоогүй, тоо = энэ тооцооны дүн
+  const [fin, setFin] = useState({ glue: null, lak: null, holio: null, tigel: null, udees: null })
+  // Нугалаа: auto = захиалгын тоо × тариф, manual = гараар оруулсан дүн, off = байхгүй
+  const [foldMode, setFoldMode] = useState('auto')
+  const [foldVal, setFoldVal] = useState(0)
+  const [showAdv, setShowAdv] = useState(false)
+  // Компанийн хадгалсан үнэ (Үнийн тохиргоо). Хадгалаагүй бол анхны утга.
+  const [prices, setPrices] = useState(() => normalizePrices(null))
+  const [pricesSaved, setPricesSaved] = useState(true)
+  const [paperId, setPaperId] = useState('default')
+  const curProdRef = useRef('poster')
   const [showQuote, setShowQuote] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
+  const [billing, setBilling] = useState(null) // { pro, expires_at, pending, ... } — серверээс
   const [showSave, setShowSave] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
-  const cvHRef = useRef(null)
-  const cvVRef = useRef(null)
+  const cvRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -185,51 +191,123 @@ export default function Dashboard() {
       setUser(user)
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
       if (prof) setProfile(prof)
+      // Компанийн үнийн тохиргоо — байхгүй эсвэл алдаа гарвал анхны утгаар үргэлжилнэ
+      const { data: ps } = await supabase.from('price_settings').select('data').eq('user_id', user.id).maybeSingle()
+      const pr = normalizePrices(ps?.data)
+      setPrices(pr)
+      setPricesSaved(!!ps)
+      applyRates(curProdRef.current, pr)
+      setPaperId(pr.papers[0].id); setA0Price(pr.papers[0].price)
+      setProfit(pr.profit)
+      // Pro эрхийг серверээс шалгана
+      const br = await fetch('/api/billing/status', { cache: 'no-store' }).catch(() => null)
+      if (br?.ok) setBilling(await br.json())
     }
     init()
   }, [])
 
-  const getSheetWH = useCallback(() => {
-    if (printSheet === 'custom') return { w: psW || 364, h: psH || 515 }
-    return SHEET_SIZES[printSheet] || SHEET_SIZES.B3
-  }, [printSheet, psW, psH])
+  const p = PRODUCTS[curProd]
+
+  const sheet = useMemo(() => (
+    printSheet === 'custom'
+      ? { w: psW || 364, h: psH || 515 }
+      : SHEET_SIZES[printSheet] || SHEET_SIZES.B3
+  ), [printSheet, psW, psH])
+
+  // 1 хуудаст багтах тоо: хэвтээ, босоогийн аль ихийг нь (нэмэхгүй)
+  const layout = useMemo(() => bestLayout(sheet.w, sheet.h, prodW, prodH), [sheet, prodW, prodH])
+  const perSheet = perSheetManual ?? layout.perSheet
+  const rates = useMemo(() => productRates(curProd, p, prices), [curProd, p, prices])
+  const foldOn = foldMode === 'manual' || (foldMode === 'auto' && rates.fold > 0)
+  const foldManual = foldMode === 'auto' ? null : foldMode === 'manual' ? foldVal : 0
+  const vFold = foldManual ?? (rates.fold > 0 ? qty * rates.fold : 0)
+  const finSum = Object.values(fin).reduce((a, v) => a + (v || 0), 0)
+  const sheetName = printSheet === 'custom' ? `${psW}×${psH}` : printSheet
+
+  // Excel-ийн томьёогоор: J = E × G / H + F, K = J / I ...
+  const jobInput = useMemo(() => ({
+    qty,
+    waste:          qtyWaste,
+    faces,
+    multiPage:      p.faces > 1,
+    twoSided:       sides === 2,
+    perSheet,
+    sheetsPerA0:    spa,
+    a0Price,
+    digital:        p.dig,
+    platePrice:     platePr,
+    pressPrice:     pressPr,
+    digitalPrice:   digPr,
+    finishingFixed: finSum + prices.cut,
+    foldPerUnit:    rates.fold,
+    foldManual,
+    profitPct:      profit,
+  }), [qty, qtyWaste, faces, p, sides, perSheet, spa, a0Price, platePr, pressPr, digPr, finSum, foldManual, profit, prices.cut, rates.fold])
+
+  const { result, calcError } = useMemo(() => {
+    try {
+      return { result: calculateJob(jobInput), calcError: '' }
+    } catch (e) {
+      return { result: {}, calcError: e.message }
+    }
+  }, [jobInput])
+
+  // Үнийн саналын хүснэгтэд бусад тоо ширхэгийн үнийг ЖИНХЭНЭ тооцоогоор гаргана
+  const priceAt = q => {
+    try { return calculateJob({ ...jobInput, qty: q }).client } catch { return 0 }
+  }
 
   useEffect(() => {
-    const sh = getSheetWH()
-    const iW = prodW || 1, iH = prodH || 1
-    const nH = drawCanvas(cvHRef.current, sh.w, sh.h, iW, iH)
-    const nV = drawCanvas(cvVRef.current, sh.h, sh.w, iW, iH)
-    const perSheet = Math.max(nH + nV, 1)
-    const p = PRODUCTS[curProd]
-    const totalSheets = (qtySheet + qtyWaste) * sides
-    const a0Count = Math.ceil(totalSheets / (spa || 1))
-    const paperCost = a0Count * a0Price
-    const faceCount = p.faces > 1 ? faces : 1
-    const items = Math.ceil(faceCount / (p.faces > 1 ? 4 : 1))
-    const plateMult = sides === 2 ? 8 : 4
-    const plateCount = p.dig ? 0 : items * plateMult
-    const plateCost = plateCount * platePr
-    const pressCost = p.dig ? items * totalSheets * digPr : items * pressPr
-    const proc = vGlue + vFold + vLak + vHolio + vTigel + vUdees + 20000 + pressCost
-    const total = paperCost + plateCost + proc
-    const client = total * (1 + profit / 100)
-    const unit = qty > 0 ? client / qty : 0
-    setResult({ nH, nV, perSheet, totalSheets, a0Count, paperCost, plateCost, pressCost, proc, total, client, unit })
-  }, [curProd, sides, profit, printSheet, psW, psH, prodW, prodH, qty, qtySheet, qtyWaste, spa, a0Price, platePr, pressPr, digPr, faces, vGlue, vFold, vLak, vHolio, vTigel, vUdees])
+    // Олон багтах байрлалыг нь зурна
+    if (layout.vertical.count > layout.horizontal.count) drawCanvas(cvRef.current, sheet.h, sheet.w, prodW, prodH, layout.vertical)
+    else drawCanvas(cvRef.current, sheet.w, sheet.h, prodW, prodH, layout.horizontal)
+  }, [sheet, prodW, prodH, layout, user])
+
+  // Бүтээгдэхүүний төрлөөс хамаарах тарифыг хадгалсан үнээс тавина
+  function applyRates(key, pr) {
+    const r = productRates(key, PRODUCTS[key], pr)
+    setPlatePr(r.plate)
+    setPressPr(r.press)
+    setQtyWaste(r.waste)
+    setDigPr(pr.digitalPrice)
+  }
+
+  function selectPaper(id) {
+    setPaperId(id)
+    const paper = prices.papers.find(x => x.id === id)
+    if (paper) setA0Price(paper.price)
+  }
 
   function selectProduct(key) {
     const p = PRODUCTS[key]
+    curProdRef.current = key
     setCurProd(key)
     setSides(p.side)
     setPrintSheet(p.sheet)
     setSpa(p.spa)
-    setPlatePr(p.plate)
-    setPressPr(p.press)
+    applyRates(key, prices)
     setProdW(p.pw)
     setProdH(p.ph)
     setFaces(p.faces)
-    setActivePreset('cust')
-    setVFold(p.fold > 0 ? qty * p.fold : 0)
+    setActivePreset(PRESETS.find(x => x.w === p.pw && x.h === p.ph)?.id || 'cust')
+    setFoldMode('auto')
+    setPerSheetManual(null)
+  }
+
+  function toggleFold() {
+    if (foldOn) setFoldMode('off')
+    else if (rates.fold > 0) setFoldMode('auto')
+    else { setFoldVal(0); setFoldMode('manual') }
+  }
+
+  // Сонгоход Үнийн тохиргооны дүн орно, дахин дарахад хасагдана
+  function toggleFin(key) {
+    setFin(f => ({ ...f, [key]: f[key] != null ? null : prices[key] }))
+  }
+
+  function openQuote() {
+    if (billing?.pro) setShowQuote(true)
+    else setShowUpgrade(true)
   }
 
   function handlePreset(pr) {
@@ -237,10 +315,12 @@ export default function Dashboard() {
     if (pr.id === 'cust') return
     setProdW(pr.w)
     setProdH(pr.h)
+    setPerSheetManual(null)
   }
 
   function handleSheetChange(val) {
     setPrintSheet(val)
+    setPerSheetManual(null)
     const spaMap = { B3:5, A3:8, A2:4, A4:16, A5:32, custom:5 }
     setSpa(spaMap[val] || 5)
   }
@@ -252,23 +332,25 @@ export default function Dashboard() {
   }
 
   async function handleSave() {
-    if (!user) return
+    if (!user || saving) return
+    if (calcError) { setSaveMsg('Алдаа: ' + calcError); return }
     const name = saveName.trim() ||
       `${PRODUCTS[curProd].t} — ${new Date().toLocaleDateString('mn-MN')}`
     setSaving(true); setSaveMsg('')
     try {
       const supabase = createClient()
-      const sh = getSheetWH()
+      // Хуудасны талбайн хэдэн хувийг бүтээгдэхүүн эзэлж байгаа вэ
+      const efficiency = Math.min(100, Math.round(perSheet * prodW * prodH / (sheet.w * sheet.h) * 100)) || 0
       const { error } = await supabase.from('calculations').insert({
         user_id: user.id,
         name,
         paper_size: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,
-        paper_w: sh.w, paper_h: sh.h,
+        paper_w: sheet.w, paper_h: sheet.h,
         material_w: prodW, material_h: prodH,
         qty,
         total: Math.round(result.total || 0),
-        per_sheet: result.perSheet || 0,
-        efficiency: 100,
+        per_sheet: perSheet,
+        efficiency,
       })
       if (error) { setSaveMsg('Алдаа: ' + error.message); return }
       setSaveMsg('✓ Хадгалагдлаа')
@@ -277,231 +359,284 @@ export default function Dashboard() {
     } finally { setSaving(false) }
   }
 
-  const p = PRODUCTS[curProd]
   const initials = (profile?.company_name || user?.email || '?').slice(0,2).toUpperCase()
 
-  if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'system-ui'}}>Ачааллаж байна...</div>
+  if (!user) return <div style={{minHeight:'100vh',background:'#f4f5f7',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontFamily:'var(--app-font)'}}>Ачааллаж байна...</div>
 
   return (
-    <div style={S.shell}>
-      {/* SIDEBAR */}
-      <div style={S.sidebar}>
-        <div style={S.sbHead}><span style={S.sbLabel}>Бүтээгдэхүүн</span></div>
-        {Object.entries(PRODUCTS).map(([key, val], i) => (
-          <div key={key}>
-            {key === 'sticker' && <div style={S.sbDiv}/>}
-            <button style={S.sbItem(curProd===key)} onClick={()=>selectProduct(key)}>
-              {val.t}
-            </button>
-          </div>
-        ))}
-        <div style={{flex:1}}/>
-        <div style={S.sbUser}>
-          <div style={S.sbAvatar}>
+    <div style={S.page}>
+      <style>{CSS}</style>
+
+      <header style={S.header}>
+        <div style={S.brand}>
+          <div style={S.avatar}>
             {profile?.logo_url
-              ? <img src={profile.logo_url} alt="logo" style={{width:28,height:28,borderRadius:'50%',objectFit:'cover'}}/>
+              ? <img src={profile.logo_url} alt="" style={{width:30,height:30,objectFit:'cover'}}/>
               : initials}
           </div>
-          <div>
-            <div style={S.sbUname}>{profile?.company_name || 'Компани'}</div>
-            <div style={S.sbEmail}>{user?.email?.slice(0,22)}</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:700}}>{profile?.company_name || 'PrintCalc Pro'}</div>
+            <div className="pc-hide-sm" style={{fontSize:12,color:C.mute}}>{user?.email}</div>
           </div>
+        </div>
+        <nav style={S.nav}>
+          <button className="pc-btn" style={S.proBtn(billing?.pro)} onClick={()=>setShowUpgrade(true)}>
+            {billing?.pro ? 'PRO' : billing?.pending ? 'Төлбөр шалгагдаж байна' : 'Pro авах'}
+          </button>
+          <button className="pc-btn" style={S.navBtn} onClick={()=>router.push('/prices')}>Үнийн тохиргоо</button>
+          <button className="pc-btn" style={S.navBtn} onClick={()=>router.push('/profile')}>Профайл</button>
+          <button className="pc-btn" style={S.navBtn} onClick={handleLogout}>Гарах</button>
+        </nav>
+      </header>
+
+      <div className="pc-body" style={S.body}>
+        <div style={{marginBottom:16}}>
+          <h1 style={S.h1}>Шинэ тооцоо</h1>
+          <p style={S.lead}>Гурван алхмаар бөглөнө. Үнэ тэр дороо шинэчлэгдэнэ.</p>
+        </div>
+
+        <div className="pc-grid">
+          <main className="pc-main">
+            {!pricesSaved && (
+              <div style={S.info}>
+                <span>Одоо жишиг үнээр тооцож байна. Өөрийн компанийн үнийг нэг удаа оруулаад хадгалаарай.</span>
+                <button style={{...S.linkBtn,fontSize:13,fontWeight:700}} onClick={()=>router.push('/prices')}>Үнээ оруулах →</button>
+              </div>
+            )}
+            {calcError && <div role="alert" style={S.err}>{calcError}. Хэмжээ эсвэл «1 хуудаст багтах тоо»-г шалгана уу.</div>}
+
+            {/* 1 */}
+            <section style={S.card}>
+              <div style={S.stepHead}><span style={S.stepNum}>1</span><h2 style={S.h2}>Юу хэвлэх вэ</h2></div>
+              <div style={S.chips} role="group" aria-label="Бүтээгдэхүүн">
+                {Object.entries(PRODUCTS).map(([key, val]) => (
+                  <button key={key} className="pc-chip" aria-pressed={curProd===key} style={S.chip(curProd===key)} onClick={()=>selectProduct(key)}>{val.t}</button>
+                ))}
+              </div>
+              <div style={S.row}>
+                <div style={S.field('2 1 220px')}>
+                  <label htmlFor="pc-size" style={S.label}>Хэмжээ</label>
+                  <select id="pc-size" className="pc-in" style={S.input} value={activePreset} onChange={e=>handlePreset(PRESETS.find(x=>x.id===e.target.value))}>
+                    {PRESETS.filter(x=>x.id!=='cust').map(x => <option key={x.id} value={x.id}>{x.label} — {x.w} × {x.h} мм</option>)}
+                    <option value="cust">Дурын хэмжээ…</option>
+                  </select>
+                </div>
+                <div style={S.field('1 1 130px')}>
+                  <label htmlFor="pc-qty" style={S.label}>Тоо ширхэг</label>
+                  <input id="pc-qty" className="pc-in" type="number" min={0} inputMode="numeric" style={{...S.input,fontWeight:700}} value={qty} onFocus={e=>e.target.select()} onChange={e=>setQty(Math.max(0,+e.target.value||0))}/>
+                </div>
+                <div style={S.field('1 1 190px')}>
+                  <span id="pc-sides" style={S.label}>Хэвлэлийн тал</span>
+                  <div role="group" aria-labelledby="pc-sides" style={S.seg}>
+                    <button className="pc-btn" aria-pressed={sides===1} style={S.segBtn(sides===1)} onClick={()=>setSides(1)}>Нэг тал</button>
+                    <button className="pc-btn" aria-pressed={sides===2} style={S.segBtn(sides===2)} onClick={()=>setSides(2)}>Хоёр тал</button>
+                  </div>
+                </div>
+              </div>
+              {(activePreset === 'cust' || p.faces > 1) && (
+                <div style={S.row}>
+                  {activePreset === 'cust' && <>
+                    <div style={S.field('1 1 130px')}>
+                      <label htmlFor="pc-w" style={S.label}>Өргөн, мм</label>
+                      <input id="pc-w" className="pc-in" type="number" min={0} style={S.input} value={prodW} onFocus={e=>e.target.select()} onChange={e=>{setProdW(+e.target.value||0);setPerSheetManual(null)}}/>
+                    </div>
+                    <div style={S.field('1 1 130px')}>
+                      <label htmlFor="pc-h" style={S.label}>Өндөр, мм</label>
+                      <input id="pc-h" className="pc-in" type="number" min={0} style={S.input} value={prodH} onFocus={e=>e.target.select()} onChange={e=>{setProdH(+e.target.value||0);setPerSheetManual(null)}}/>
+                    </div>
+                  </>}
+                  {p.faces > 1 && (
+                    <div style={S.field('1 1 130px')}>
+                      <label htmlFor="pc-faces" style={S.label}>Нүүрийн тоо</label>
+                      <input id="pc-faces" className="pc-in" type="number" min={1} style={S.input} value={faces} onFocus={e=>e.target.select()} onChange={e=>setFaces(+e.target.value||4)}/>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* 2 */}
+            <section style={S.card}>
+              <div style={S.stepHead}><span style={S.stepNum}>2</span><h2 style={S.h2}>Юугаар хэвлэх вэ</h2></div>
+              <div style={S.row}>
+                <div style={S.field('2 1 240px')}>
+                  <label htmlFor="pc-paper" style={S.label}>Цаас</label>
+                  <select id="pc-paper" className="pc-in" style={S.input} value={paperId} onChange={e=>selectPaper(e.target.value)}>
+                    {prices.papers.map(x => <option key={x.id} value={x.id}>{x.name} — А0 нь ₮{x.price.toLocaleString()}</option>)}
+                    {paperId === '' && <option value="">Гараар оруулсан үнэ — ₮{a0Price.toLocaleString()}</option>}
+                  </select>
+                  <span style={S.hint}>Жагсаалт, үнийг <button style={S.linkBtn} onClick={()=>router.push('/prices')}>Үнийн тохиргоо</button>-ноос авна.</span>
+                </div>
+                <div style={S.field('1 1 190px')}>
+                  <label htmlFor="pc-sheet" style={S.label}>Хэвлэх хуудас</label>
+                  <select id="pc-sheet" className="pc-in" style={S.input} value={printSheet} onChange={e=>handleSheetChange(e.target.value)}>
+                    {Object.entries(SHEET_SIZES).map(([k, v]) => <option key={k} value={k}>{k} — {v.w} × {v.h} мм</option>)}
+                    <option value="custom">Дурын хэмжээ…</option>
+                  </select>
+                </div>
+              </div>
+              {printSheet === 'custom' && (
+                <div style={S.row}>
+                  <div style={S.field('1 1 130px')}>
+                    <label htmlFor="pc-sw" style={S.label}>Хуудасны өргөн, мм</label>
+                    <input id="pc-sw" className="pc-in" type="number" min={0} style={S.input} value={psW} onFocus={e=>e.target.select()} onChange={e=>{setPsW(+e.target.value||0);setPerSheetManual(null)}}/>
+                  </div>
+                  <div style={S.field('1 1 130px')}>
+                    <label htmlFor="pc-sh" style={S.label}>Хуудасны өндөр, мм</label>
+                    <input id="pc-sh" className="pc-in" type="number" min={0} style={S.input} value={psH} onFocus={e=>e.target.select()} onChange={e=>{setPsH(+e.target.value||0);setPerSheetManual(null)}}/>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* 3 */}
+            <section style={S.card}>
+              <div style={S.stepHead}><span style={S.stepNum}>3</span><h2 style={S.h2}>Боловсруулалт</h2></div>
+              <div style={S.chips} role="group" aria-label="Боловсруулалт">
+                <button className="pc-chip" aria-pressed="true" disabled style={{...S.chip(true),cursor:'default'}}>Огтлоо · {fmt(prices.cut)}</button>
+                <button className="pc-chip" aria-pressed={foldOn} style={S.chip(foldOn)} onClick={toggleFold}>Нугалаа{foldOn ? ` · ${fmt(vFold)}` : ''}</button>
+                {FINISH.map(([k, label]) => (
+                  <button key={k} className="pc-chip" aria-pressed={fin[k] != null} style={S.chip(fin[k] != null)} onClick={()=>toggleFin(k)}>
+                    {label}{fin[k] != null ? ` · ${fmt(fin[k])}` : ''}
+                  </button>
+                ))}
+              </div>
+              {(foldOn || FINISH.some(([k]) => fin[k] != null)) && (
+                <div style={{borderTop:`1px solid ${C.line}`,paddingTop:8}}>
+                  {foldOn && (
+                    <div style={S.finRow}>
+                      <label htmlFor="pc-fold" style={{fontSize:14}}>
+                        Нугалаа, нийт дүн{' '}
+                        {foldMode === 'manual' && rates.fold > 0 && <button style={S.linkBtn} onClick={()=>setFoldMode('auto')}>авто ({fmt(qty * rates.fold)})</button>}
+                        {foldMode === 'auto' && <span style={S.hint}>{qty.toLocaleString()} × ₮{rates.fold}</span>}
+                      </label>
+                      <input id="pc-fold" className="pc-in" type="number" min={0} style={S.finInput} value={vFold} onFocus={e=>e.target.select()} onChange={e=>{setFoldMode('manual');setFoldVal(Math.max(0,+e.target.value||0))}}/>
+                    </div>
+                  )}
+                  {FINISH.filter(([k]) => fin[k] != null).map(([k, label]) => (
+                    <div key={k} style={S.finRow}>
+                      <label htmlFor={`pc-fin-${k}`} style={{fontSize:14}}>{label}, нийт дүн</label>
+                      <input id={`pc-fin-${k}`} className="pc-in" type="number" min={0} style={S.finInput} value={fin[k]} onFocus={e=>e.target.select()} onChange={e=>setFin(f=>({...f,[k]:Math.max(0,+e.target.value||0)}))}/>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span style={S.hint}>Дарж сонгоно. Дүн нь Үнийн тохиргооноос орно, энэ тооцоонд зориулж засаж болно.</span>
+            </section>
+
+            {/* Нарийвчилсан */}
+            <button className="pc-btn" aria-expanded={showAdv} aria-controls="pc-adv" style={S.advBtn} onClick={()=>setShowAdv(v=>!v)}>
+              <span style={{display:'flex',flexDirection:'column',gap:2}}>
+                <span style={{fontSize:14,fontWeight:700}}>Нарийвчилсан тохиргоо</span>
+                <span style={S.hint}>
+                  Хадаас {qtyWaste} · {p.dig ? `Дижитал ₮${digPr.toLocaleString()}/хуудас` : `Төмөр ₮${platePr.toLocaleString()} · Даралт ₮${pressPr.toLocaleString()}`} · А0-оос {spa} хуудас
+                </span>
+              </span>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.mute} strokeWidth="2" style={{transform:showAdv?'rotate(180deg)':'none',flexShrink:0}}><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            {showAdv && (
+              <section id="pc-adv" style={S.card}>
+                <div style={S.row}>
+                  <div style={S.field('1 1 150px')}>
+                    <label htmlFor="pc-waste" style={S.label}>Хадаас, хуудас</label>
+                    <input id="pc-waste" className="pc-in" type="number" min={0} style={S.input} value={qtyWaste} onFocus={e=>e.target.select()} onChange={e=>setQtyWaste(Math.max(0,+e.target.value||0))}/>
+                  </div>
+                  <div style={S.field('1 1 150px')}>
+                    <label htmlFor="pc-per" style={S.label}>1 хуудаст багтах тоо</label>
+                    <input id="pc-per" className="pc-in" type="number" min={0} style={{...S.input,background:perSheetManual!=null?'#fefce8':'white'}} value={perSheet} onFocus={e=>e.target.select()} onChange={e=>setPerSheetManual(Math.max(0,Math.floor(+e.target.value||0)))}/>
+                    {perSheetManual != null
+                      ? <button style={{...S.linkBtn,textAlign:'left'}} onClick={()=>setPerSheetManual(null)}>Автомат руу буцаах ({layout.perSheet})</button>
+                      : <span style={S.hint}>Автомат: хэвтээ {layout.horizontal.count}, босоо {layout.vertical.count}</span>}
+                  </div>
+                  <div style={S.field('1 1 150px')}>
+                    <label htmlFor="pc-spa" style={S.label}>Нэг А0-оос гарах хуудас</label>
+                    <input id="pc-spa" className="pc-in" type="number" min={1} style={S.input} value={spa} onFocus={e=>e.target.select()} onChange={e=>setSpa(+e.target.value||1)}/>
+                  </div>
+                </div>
+                <div style={S.row}>
+                  <div style={S.field('1 1 150px')}>
+                    <label htmlFor="pc-a0" style={S.label}>А0 цаасны үнэ, ₮</label>
+                    <input id="pc-a0" className="pc-in" type="number" min={0} style={S.input} value={a0Price} onFocus={e=>e.target.select()} onChange={e=>{setA0Price(Math.max(0,+e.target.value||0));setPaperId('')}}/>
+                  </div>
+                  {p.dig ? (
+                    <div style={S.field('1 1 150px')}>
+                      <label htmlFor="pc-dig" style={S.label}>Дижитал үнэ, ₮/хуудас</label>
+                      <input id="pc-dig" className="pc-in" type="number" min={0} style={S.input} value={digPr} onFocus={e=>e.target.select()} onChange={e=>setDigPr(Math.max(0,+e.target.value||0))}/>
+                    </div>
+                  ) : <>
+                    <div style={S.field('1 1 150px')}>
+                      <label htmlFor="pc-plate" style={S.label}>Төмрийн үнэ, ₮/ш</label>
+                      <input id="pc-plate" className="pc-in" type="number" min={0} style={S.input} value={platePr} onFocus={e=>e.target.select()} onChange={e=>setPlatePr(Math.max(0,+e.target.value||0))}/>
+                    </div>
+                    <div style={S.field('1 1 150px')}>
+                      <label htmlFor="pc-press" style={S.label}>Даралтын үнэ, ₮</label>
+                      <input id="pc-press" className="pc-in" type="number" min={0} style={S.input} value={pressPr} onFocus={e=>e.target.select()} onChange={e=>setPressPr(Math.max(0,+e.target.value||0))}/>
+                    </div>
+                  </>}
+                </div>
+                <span style={S.hint}>Эндхийн өөрчлөлт зөвхөн энэ тооцоонд хүчинтэй. Байнгын үнээ Үнийн тохиргоонд засна.</span>
+              </section>
+            )}
+          </main>
+
+          <aside className="pc-aside">
+            <section style={S.card}>
+              <div style={S.asideHead}>
+                <h2 style={{...S.h2,fontSize:14}}>Байршуулалт</h2>
+                <span style={{fontSize:13,color:C.mute}}>{sheetName} хуудсанд <strong style={{color:C.ink}}>{perSheet} ширхэг</strong></span>
+              </div>
+              <div style={S.preview}>
+                <canvas ref={cvRef} width={230} height={230} role="img" aria-label={`${sheetName} хуудсанд ${perSheet} ширхэг багтсан байршил`}/>
+              </div>
+              <div style={S.metrics}>
+                <div style={S.metric}><span style={S.hint}>Хэвлэх хуудас</span><span style={S.metricVal}>{fmtN(result.totalSheets)}</span></div>
+                <div style={S.metric}><span style={S.hint}>А0 цаас</span><span style={S.metricVal}>{fmtN(result.a0Sheets)} ш</span></div>
+              </div>
+            </section>
+
+            <section style={S.card}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                <span style={S.label}>Үйлчлүүлэгчийн үнэ</span>
+                <span style={S.price} aria-live="polite">{result.client != null ? fmt(result.client) : '—'}</span>
+                <span style={{fontSize:13,color:C.mute}}>Нэгж үнэ {result.unit != null ? '₮' + result.unit.toLocaleString(undefined,{maximumFractionDigits:1}) : '—'} · НӨАТ-гүй</span>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <span id="pc-profit" style={S.label}>Ашиг</span>
+                <div role="group" aria-labelledby="pc-profit" style={{display:'flex',gap:6,alignItems:'center'}}>
+                  {[20,30,40].map(n => (
+                    <button key={n} className="pc-chip" aria-pressed={profit===n} style={{...S.chip(profit===n),flex:1,padding:0}} onClick={()=>setProfit(n)}>{n}%</button>
+                  ))}
+                  <input aria-label="Ашгийн хувь" className="pc-in" type="number" min={0} max={1000} style={{...S.finInput,width:76,minHeight:44}} value={profit} onFocus={e=>e.target.select()} onChange={e=>setProfit(Math.min(1000,Math.max(0,+e.target.value||0)))}/>
+                </div>
+              </div>
+              <dl style={S.dl}>
+                <div style={S.dRow}><dt style={{color:C.mute}}>Цаас</dt><dd style={{margin:0,fontWeight:600}}>{result.paperCost != null ? fmt(result.paperCost) : '—'}</dd></div>
+                {!p.dig && <div style={S.dRow}><dt style={{color:C.mute}}>Төмөр, {result.plates ?? 0} ш</dt><dd style={{margin:0,fontWeight:600}}>{result.plateCost != null ? fmt(result.plateCost) : '—'}</dd></div>}
+                <div style={S.dRow}><dt style={{color:C.mute}}>{p.dig ? 'Дижитал хэвлэл' : 'Даралт'}</dt><dd style={{margin:0,fontWeight:600}}>{result.pressCost != null ? fmt(result.pressCost) : '—'}</dd></div>
+                <div style={S.dRow}><dt style={{color:C.mute}}>Боловсруулалт</dt><dd style={{margin:0,fontWeight:600}}>{result.finishing != null ? fmt(result.finishing) : '—'}</dd></div>
+                <div style={S.dTotal}><dt>Нийт өртөг</dt><dd style={{margin:0}}>{result.total != null ? fmt(result.total) : '—'}</dd></div>
+              </dl>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <button className="pc-btn" style={S.primary} onClick={openQuote}>{billing?.pro ? 'Үнийн санал гаргах' : 'Үнийн санал гаргах · Pro'}</button>
+                <button className="pc-btn" style={S.secondary} onClick={()=>{setSaveName('');setSaveMsg('');setShowSave(true)}}>Тооцоог хадгалах</button>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
 
-      {/* MAIN */}
-      <div style={S.main}>
-        <div style={S.topbar}>
-          <div>
-            <div style={{fontSize:14,fontWeight:500,color:'#1a1f36'}}>{p.t}</div>
-            <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{p.s}</div>
-          </div>
-          <div style={{display:'flex',gap:8}}>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #16a34a',background:'#f0fdf4',color:'#16a34a',cursor:'pointer',fontWeight:500}} onClick={()=>{setSaveName('');setSaveMsg('');setShowSave(true)}}>💾 Хадгалах</button>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontWeight:500}} onClick={()=>setShowQuote(true)}>📋 Үнийн санал</button>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={()=>router.push('/profile')}>Профайл</button>
-            <button style={{fontSize:11,padding:'5px 12px',borderRadius:8,border:'0.5px solid #e2e8f0',background:'none',color:'#64748b',cursor:'pointer'}} onClick={handleLogout}>Гарах</button>
-          </div>
+      <div className="pc-bar">
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span style={{fontSize:12,fontWeight:600,color:C.mute}}>Үйлчлүүлэгчийн үнэ</span>
+          <span style={{fontSize:22,fontWeight:700,color:C.good}}>{result.client != null ? fmt(result.client) : '—'}</span>
         </div>
-
-        <div style={S.body}>
-          {/* ① ХЭВЛЭХ ЦААС */}
-          <div>
-            <div style={S.sectionLabel}>① Хэвлэх цаасны тохиргоо</div>
-            <div style={S.grid3}>
-              {/* Хэвлэх хуудас */}
-              <div style={{...S.card,display:'flex',flexDirection:'column',gap:10}}>
-                <div style={S.field}>
-                  <label style={S.label}>Хэвлэх хуудасны хэмжээ</label>
-                  <select style={S.select} value={printSheet} onChange={e=>handleSheetChange(e.target.value)}>
-                    <option value="B3">B3 — 364×515мм</option>
-                    <option value="A3">A3 — 297×420мм</option>
-                    <option value="A2">A2 — 420×594мм</option>
-                    <option value="A4">A4 — 210×297мм</option>
-                    <option value="A5">A5 — 148×210мм</option>
-                    <option value="custom">Дурын хэмжээ...</option>
-                  </select>
-                </div>
-                {printSheet === 'custom' && (
-                  <div style={S.grid2}>
-                    <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={psW} onFocus={e=>e.target.select()} onChange={e=>setPsW(+e.target.value||0)}/></div>
-                    <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={psH} onFocus={e=>e.target.select()} onChange={e=>setPsH(+e.target.value||0)}/></div>
-                  </div>
-                )}
-                <div style={S.fieldLast}>
-                  <label style={S.label}>Хэвлэлийн тал</label>
-                  <div style={S.tgl}>
-                    <button style={S.tglB(sides===1)} onClick={()=>setSides(1)}>Нэг тал</button>
-                    <button style={S.tglB(sides===2)} onClick={()=>setSides(2)}>Хоёр тал</button>
-                  </div>
-                </div>
-                {p.faces > 1 && (
-                  <div style={S.fieldLast}><label style={S.label}>Нүүрийн тоо</label><input type="number" style={S.input} value={faces} onFocus={e=>e.target.select()} onChange={e=>setFaces(+e.target.value||4)}/></div>
-                )}
-              </div>
-
-              {/* Бүтээгдэхүүний хэмжээ */}
-              <div style={{...S.card,display:'flex',flexDirection:'column',gap:8}}>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:0}}>Бүтээгдэхүүний хэмжээ</div>
-                <div style={S.presetGrid}>
-                  {PRESETS.map(pr => (
-                    <button key={pr.id} style={S.presetBtn(activePreset===pr.id)} onClick={()=>handlePreset(pr)}>
-                      {pr.label}{pr.sub && <><br/><span style={{fontSize:9}}>{pr.sub}</span></>}
-                    </button>
-                  ))}
-                </div>
-                <div style={S.grid2}>
-                  <div style={S.fieldLast}><label style={S.label}>Өргөн мм</label><input type="number" style={S.input} value={prodW} onFocus={e=>e.target.select()} onChange={e=>{setProdW(+e.target.value||0);setActivePreset('cust')}}/></div>
-                  <div style={S.fieldLast}><label style={S.label}>Өндөр мм</label><input type="number" style={S.input} value={prodH} onFocus={e=>e.target.select()} onChange={e=>{setProdH(+e.target.value||0);setActivePreset('cust')}}/></div>
-                </div>
-                <div style={S.info}>1 хуудаст: {result.perSheet||'—'}ш (↔{result.nH||0} + ↕{result.nV||0})</div>
-              </div>
-
-              {/* Хэвлэх тоо */}
-              <div style={{...S.card,display:'flex',flexDirection:'column',gap:10}}>
-                <div style={{fontSize:11,color:'#64748b'}}>Хэвлэх тоо</div>
-                <div style={S.qtyBox}>
-                  <div style={S.qtyRow}>
-                    <span style={S.qtyLbl}>Захиалгын тоо</span>
-                    <input style={S.qtyInp} type="number" value={qty} onFocus={e=>e.target.select()} onChange={e=>setQty(+e.target.value||0)}/>
-                  </div>
-                  <div style={S.qtyRow}>
-                    <span style={S.qtyLbl}>Хэвлэх хуудас</span>
-                    <input style={S.qtyInp} type="number" value={qtySheet} onFocus={e=>e.target.select()} onChange={e=>setQtySheet(+e.target.value||0)}/>
-                  </div>
-                  <div style={S.qtyRow}>
-                    <span style={S.qtyLbl}>Хадаас</span>
-                    <input style={S.qtyInp} type="number" value={qtyWaste} onFocus={e=>e.target.select()} onChange={e=>setQtyWaste(+e.target.value||0)}/>
-                  </div>
-                  <div style={S.qtyTotal}>
-                    <span style={{fontSize:12,fontWeight:500,color:'#1a1f36'}}>Нийт хэвлэх</span>
-                    <span style={{fontSize:14,fontWeight:500,color:'#1a1f36'}}>{(qtySheet+qtyWaste).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ЗУРАГЛАЛ + FLOW */}
-          <div style={S.grid2}>
-            <div style={S.visBox}>
-              <div style={S.canvasCol}>
-                <canvas ref={cvHRef} width={140} height={105}/>
-                <div style={S.cvLabel}>↔ Хэвтээ <span style={S.cvBadge}>{result.nH||0}ш</span></div>
-              </div>
-              <div style={S.canvasCol}>
-                <canvas ref={cvVRef} width={105} height={105}/>
-                <div style={S.cvLabel}>↕ Босоо <span style={S.cvBadge}>{result.nV||0}ш</span></div>
-              </div>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              <div style={S.flow}>
-                <div style={S.flItem}><div style={S.flVal}>{result.totalSheets||'—'}хуудас</div><div style={S.flLbl}>Нийт хуудас</div></div>
-                <div style={S.flArr}>÷</div>
-                <div style={S.flItem}><div style={S.flVal}>{spa}</div><div style={S.flLbl}>A0-аас хуудас</div></div>
-                <div style={S.flArr}>=</div>
-                <div style={S.flItem}><div style={S.flVal}>{result.a0Count||'—'}ш</div><div style={S.flLbl}>A0 цаас</div></div>
-                <div style={S.flArr}>×</div>
-                <div style={S.flItem}><div style={S.flVal}>₮{a0Price.toLocaleString()}</div><div style={S.flLbl}>A0 үнэ</div></div>
-                <div style={S.flArr}>=</div>
-                <div style={S.flItem}><div style={{...S.flVal,color:'#4f46e5'}}>{result.paperCost!=null?fmt(result.paperCost):'—'}</div><div style={S.flLbl}>Цаасны зардал</div></div>
-              </div>
-              <div style={S.grid4}>
-                {[['1 хуудаст',(result.perSheet||'—')+'ш'],['Нийт хуудас',(result.totalSheets||'—')+'хуудас'],['A0 цаас',(result.a0Count||'—')+'ш'],['Цаасны зардал',result.paperCost!=null?fmt(result.paperCost):'—']].map(([l,v])=>(
-                  <div key={l} style={S.metric}>
-                    <div style={S.metricLabel}>{l}</div>
-                    <div style={{...S.metricVal,fontSize:14}}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ② A0 ҮНЭ */}
-          <div>
-            <div style={S.sectionLabel}>② A0 цаасны үнийн тохиргоо</div>
-            <div style={S.grid2}>
-              <div style={{...S.card,display:'flex',flexDirection:'column',gap:8}}>
-                <div style={S.field}><label style={S.label}>A0 нэгж үнэ (₮)</label><input type="number" style={S.input} value={a0Price} onFocus={e=>e.target.select()} onChange={e=>setA0Price(+e.target.value||0)}/></div>
-                <div style={S.fieldLast}><label style={S.label}>Нэг A0-аас хэдэн хуудас гарах</label><input type="number" style={S.input} value={spa} onFocus={e=>e.target.select()} onChange={e=>setSpa(+e.target.value||1)}/></div>
-                <div style={S.hint}>{printSheet === 'custom' ? 'Дурын' : printSheet} → нэг A0-аас {spa} ширхэг</div>
-              </div>
-              <div style={{...S.card,display:'flex',flexDirection:'column',gap:8}}>
-                <div style={S.field}><label style={S.label}>Төмрийн нэгж үнэ (₮)</label><input type="number" style={S.input} value={platePr} onFocus={e=>e.target.select()} onChange={e=>setPlatePr(+e.target.value||0)}/></div>
-                <div style={S.fieldLast}><label style={S.label}>Хэвлэлтийн даралтын үнэ (₮)</label><input type="number" style={S.input} value={pressPr} onFocus={e=>e.target.select()} onChange={e=>setPressPr(+e.target.value||0)}/></div>
-                {p.dig && <div style={S.fieldLast}><label style={S.label}>Дижитал үнэ/хуудас (₮)</label><input type="number" style={S.input} value={digPr} onFocus={e=>e.target.select()} onChange={e=>setDigPr(+e.target.value||0)}/></div>}
-              </div>
-            </div>
-          </div>
-
-          {/* ③ БОЛОВСРУУЛАЛТ */}
-          <div>
-            <div style={S.sectionLabel}>③ Боловсруулалт · зардлын задаргаа</div>
-            <div style={S.grid2}>
-              <div style={S.card}>
-                <div style={S.chkRow}><span style={S.chkL}>Хэвлэлтийн даралт <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>{result.pressCost!=null?fmt(result.pressCost):'—'}</span></div>
-                <div style={S.sep}/>
-                {[['Бүрэлт',vGlue,setVGlue],['Нугалаа',vFold,setVFold],['Лак',vLak,setVLak],['Холио',vHolio,setVHolio],['Тигель',vTigel,setVTigel],['Үдээс',vUdees,setVUdees]].map(([label,val,setter])=>(
-                  <div key={label} style={S.chkRow}>
-                    <span style={S.chkL}>{label} <span style={S.badge('opt')}>сонголт</span></span>
-                    <div style={S.chkR}><input type="number" style={S.chkInp} value={val} onFocus={e=>e.target.select()} onChange={e=>setter(+e.target.value||0)}/><span style={{fontSize:10,color:'#94a3b8'}}>₮</span></div>
-                  </div>
-                ))}
-                <div style={S.chkRow}><span style={S.chkL}>Огтлоо <span style={S.badge('req')}>заавал</span></span><span style={{fontSize:11,fontWeight:500,color:'#1a1f36'}}>₮20,000</span></div>
-              </div>
-              <div style={S.card}>
-                {[['Цаасны зардал',result.paperCost],['Төмрийн зардал',result.plateCost],['Хэвлэлтийн даралт',result.pressCost],['Боловсруулалт',result.proc!=null?result.proc-result.pressCost:null]].map(([l,v])=>(
-                  <div key={l} style={{...S.brRow,borderBottom:'0.5px solid #f1f5f9'}}>
-                    <span style={S.brL}>{l}</span>
-                    <span style={S.brV}>{v!=null?fmt(v):'—'}</span>
-                  </div>
-                ))}
-                <div style={S.total}>
-                  <span style={S.totalL}>Нийт өртөг</span>
-                  <span style={S.totalV}>{result.total!=null?fmt(result.total):'—'}</span>
-                </div>
-                <div style={S.sep}/>
-                <div style={{fontSize:10,color:'#94a3b8',fontWeight:500,letterSpacing:'.05em',textTransform:'uppercase',marginBottom:6}}>Ашгийн нэмэгдэл</div>
-                <div style={S.profitBtns}>
-                  {[20,30,40].map(n=>(
-                    <button key={n} style={S.profitBtn(profit===n)} onClick={()=>setProfit(n)}>+{n}%</button>
-                  ))}
-                </div>
-                <div style={S.totalGreen}>
-                  <span style={S.totalLG}>Үйлчлүүлэгчийн үнэ</span>
-                  <span style={S.totalVG}>{result.client!=null?fmt(result.client):'—'}</span>
-                </div>
-                <div style={{textAlign:'right',fontSize:10,color:'#94a3b8',marginTop:5}}>Нэгж: <span style={{fontWeight:500,color:'#64748b'}}>{result.unit!=null?'₮'+result.unit.toFixed(1)+'/ш':'—'}</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <button className="pc-btn" style={S.primary} onClick={openQuote}>Үнийн санал</button>
       </div>
 
       {showSave && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}
           onClick={e=>e.target===e.currentTarget&&setShowSave(false)}>
-          <div style={{background:'white',borderRadius:12,border:'0.5px solid #e2e8f0',width:'100%',maxWidth:380,padding:'20px 22px',fontFamily:'system-ui,sans-serif'}}>
+          <div style={{background:'white',borderRadius:12,border:'0.5px solid #e2e8f0',width:'100%',maxWidth:380,padding:'20px 22px',fontFamily:'var(--app-font)'}}>
             <div style={{fontSize:14,fontWeight:600,color:'#1a1f36',marginBottom:4}}>Тооцоо хадгалах</div>
             <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Тооцоонд нэр өгнө үү</div>
             <label style={{fontSize:10,fontWeight:600,color:'#64748b',letterSpacing:'.05em',textTransform:'uppercase'}}>Тооцооны нэр</label>
@@ -527,19 +662,24 @@ export default function Dashboard() {
         </div>
       )}
 
+      {showUpgrade && (
+        <UpgradeModal onClose={() => setShowUpgrade(false)} onChange={setBilling} />
+      )}
+
       {showQuote && (
         <QuoteModal
           onClose={() => setShowQuote(false)}
           profile={profile}
           calcData={{
             baseCost: result.total || 0,
+            priceAt,
             profitPct: profit,
             qty,
             printSheet: printSheet === 'custom' ? `${psW}×${psH}` : printSheet,
             prodW, prodH, sides,
             process: [
-              vGlue && 'Бүрэлт', vFold && 'Нугалаа', vLak && 'Лак',
-              vHolio && 'Холио', vTigel && 'Тигель', vUdees && 'Үдээс',
+              fin.glue != null && 'Бүрэлт', foldOn && 'Нугалаа', fin.lak != null && 'Лак',
+              fin.holio != null && 'Холио', fin.tigel != null && 'Тигель', fin.udees != null && 'Үдээс',
               'Огтлоо',
             ].filter(Boolean).join(' · '),
             productName: p.t,
